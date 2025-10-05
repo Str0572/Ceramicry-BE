@@ -1,0 +1,22 @@
+databases:
+  - name: crockery-db
+    databaseName: crockery
+    user: rails
+    plan: free
+
+services:
+  - type: web
+    name: wigoztapes
+    runtime: ruby
+    plan: free
+    buildCommand: "./render-build.sh"
+    startCommand: "bundle exec rails server"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crockery-db
+          property: connectionString
+      - key: RAILS_MASTER_KEY
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: 2
