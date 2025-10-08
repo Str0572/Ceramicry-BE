@@ -24,7 +24,7 @@ ActiveAdmin.register Product do
   end
 
   filter :name
-  filter :subcategory_id, as: :select, collection: -> { Subcategory.pluck(:name, :id) }
+  filter :subcategory_id, as: :select, collection: Subcategory.all.pluck(:name, :id)
 
   form do |f|
     f.inputs do
@@ -37,7 +37,7 @@ ActiveAdmin.register Product do
       f.input :is_featured
       f.input :is_new
       f.input :views_count
-      f.input :subcategory_id, as: :select, collection: -> { Subcategory.pluck(:name, :id) }
+      f.input :subcategory_id, as: :select, collection: Subcategory.all.pluck(:name, :id)
     end
     f.inputs "Features" do
       f.has_many :product_features, allow_destroy: true, new_record: 'Add feature' do |ff|

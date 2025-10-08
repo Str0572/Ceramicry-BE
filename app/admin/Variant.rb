@@ -27,7 +27,7 @@ ActiveAdmin.register Variant do
   filter :sku
   filter :size
   filter :stock_quantity
-  filter :product_id, as: :select, collection: -> { Product.pluck(:name, :id) }
+  filter :product_id, as: :select, collection: Product.all.pluck(:name, :id)
 
   form do |f|
     f.inputs do
@@ -38,7 +38,7 @@ ActiveAdmin.register Variant do
       f.input :original_price
       f.input :discount_percentage
       f.input :stock_quantity
-      f.input :product_id, as: :select, collection: -> { Product.pluck(:name, :id) }
+      f.input :product_id, as: :select, collection: Product.all.pluck(:name, :id)
       if f.object.product_images.attached?
         f.object.product_images.each do |img|
           span do
