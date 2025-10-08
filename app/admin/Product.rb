@@ -18,7 +18,7 @@ ActiveAdmin.register Product do
     column :is_new
     column :views_count
     column "Subcategory" do |product|
-      product.subcategory.name if product.subcategory
+      product.subcategory&.name if product.subcategory
     end
     actions
   end
@@ -73,7 +73,7 @@ ActiveAdmin.register Product do
       row :is_new
       row :views_count
       row "Subcategory" do |product|
-        product.subcategory.name if product.subcategory
+        product.subcategory&.name if product.subcategory
       end
     end
   end

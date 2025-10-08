@@ -12,7 +12,7 @@ ActiveAdmin.register Variant do
     column :discount_percentage
     column :stock_quantity
     column "Product" do |variant|
-      variant.product.name if variant.product
+      variant.product&.name if variant.product
     end
     column :product_images do |prod_img|
       if prod_img.product_images.attached?
@@ -27,7 +27,7 @@ ActiveAdmin.register Variant do
   filter :sku
   filter :size
   filter :stock_quantity
-  filter :product, as: :select, collection: Product.all.pluck(:name, :id)
+  filter :product_id, as: :select, collection: -> { Product.pluck(:name, :id) }
 
   form do |f|
     f.inputs do
@@ -38,7 +38,7 @@ ActiveAdmin.register Variant do
       f.input :original_price
       f.input :discount_percentage
       f.input :stock_quantity
-      f.input :product, as: :select, collection: Product.all.pluck(:name, :id)
+      f.input :product_id, as: :select, collection: -> { Product.pluck(:name, :id) }
       if f.object.product_images.attached?
         f.object.product_images.each do |img|
           span do
@@ -61,7 +61,7 @@ ActiveAdmin.register Variant do
       row :discount_percentage
       row :stock_quantity
       row "Product" do |variant|
-        variant.product.name if variant.product
+        variant.product&.name if variant.product
       end
       row :product_images do |prod_img|
         if prod_img.product_images.attached?
