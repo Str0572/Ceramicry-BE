@@ -1,7 +1,7 @@
 module Api
   class ReviewsController < ApplicationController
     before_action :set_product
-    before_action :authenticate_request
+    before_action :authenticate_request, only: [:create]
 
     def index
       reviews = @product.reviews.order(created_at: :desc)
