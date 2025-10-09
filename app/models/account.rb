@@ -5,6 +5,9 @@ class Account < ApplicationRecord
   has_many :cart_items, dependent: :destroy
   has_one :cart, dependent: :destroy
   # has_many :orders, dependent: :destroy
+  has_many :reviews, dependent: :destroy
+  has_many :offer_usages, dependent: :destroy
+  has_many :offers, through: :offer_usages
 
   validates :full_name, presence: true
   validates :full_name, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }

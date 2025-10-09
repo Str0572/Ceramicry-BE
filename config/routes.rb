@@ -17,11 +17,15 @@ Rails.application.routes.draw do
     resources :accounts, only: [:index, :show, :update] do
       resources :addresses, only: [:index, :show, :create, :update, :destroy]
     end
+    resources :offers, only: [:index], param: :code do
+      post :apply, on: :member
+    end
     resources :products do
       collection do
         get :search
       end
       resources :variants
+      resources :reviews, only: [:index, :create]
     end
     resources :categories, param: :slug do
       resources :subcategories

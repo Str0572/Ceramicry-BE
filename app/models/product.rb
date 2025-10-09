@@ -11,7 +11,7 @@ class Product < ApplicationRecord
   has_many :variants, dependent: :destroy
   has_many :cart_items, dependent: :destroy
   # has_many :order_items, dependent: :destroy
-  # has_many :reviews, dependent: :destroy
+  has_many :reviews, dependent: :destroy
 
   validates :name, presence: true, length: { maximum: 200 }
   validates :sku, presence: true, uniqueness: true
@@ -27,13 +27,13 @@ class Product < ApplicationRecord
     slug
   end
 
-  # def average_rating
-  #   reviews.average(:rating)&.round(1) || 0
-  # end
+  def average_rating
+    reviews.average(:rating)&.round(1) || 0
+  end
   
-  # def review_count
-  #   reviews.count
-  # end
+  def review_count
+    reviews.count
+  end
 
   private
 

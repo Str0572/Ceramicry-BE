@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_02_121855) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_09_082151) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -118,6 +118,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_02_121855) do
     t.index ["slug"], name: "index_categories_on_slug", unique: true
   end
 
+  create_table "offer_usages", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "offer_id", null: false
+    t.datetime "used_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "offer_id"], name: "index_offer_usages_on_account_id_and_offer_id", unique: true
+    t.index ["account_id"], name: "index_offer_usages_on_account_id"
+    t.index ["offer_id"], name: "index_offer_usages_on_offer_id"
+  end
+
+  create_table "offers", force: :cascade do |t|
+    t.string "code", null: false
+    t.decimal "discount", precision: 10, scale: 2, null: false
+    t.decimal "min_order", precision: 10, scale: 2, default: "0.0"
+    t.text "description"
+    t.boolean "active", default: true
+    t.datetime "expires_at"
+    t.integer "usage_limit", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_offers_on_code", unique: true
+  end
+
   create_table "product_features", force: :cascade do |t|
     t.bigint "product_id", null: false
     t.string "name"
@@ -164,6 +188,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_02_121855) do
     t.index ["subcategory_id"], name: "index_products_on_subcategory_id"
   end
 
+  create_table "reviews", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "product_id", null: false
+    t.string "title"
+    t.text "comment"
+    t.integer "rating"
+    t.boolean "verified", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_reviews_on_account_id"
+    t.index ["product_id"], name: "index_reviews_on_product_id"
+  end
+
   create_table "subcategories", force: :cascade do |t|
     t.string "name", null: false
     t.string "slug", null: false
@@ -197,10 +234,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_02_121855) do
   add_foreign_key "cart_items", "products"
   add_foreign_key "cart_items", "variants"
   add_foreign_key "carts", "accounts"
+  add_foreign_key "offer_usages", "accounts"
+  add_foreign_key "offer_usages", "offers"
   add_foreign_key "product_features", "products"
   add_foreign_key "product_includes", "products"
   add_foreign_key "product_specifications", "products"
   add_foreign_key "products", "subcategories"
+  add_foreign_key "reviews", "accounts"
+  add_foreign_key "reviews", "products"
   add_foreign_key "subcategories", "categories"
   add_foreign_key "variants", "products"
 end
