@@ -17,13 +17,13 @@ module Api
 
     def add_item
       product = Product.find_by(id: params[:product_id])
-      variant = product.variants.find_by(id: params[:variant_id])
+      variant = product&.variants&.find_by(id: params[:variant_id])
 
-      return render json: { errors: "Product not found" }, status: :not_found unless product && variant
+      return render json: { errors: "Product or variant not found" }, status: :not_found unless product && variant
+      return render json: { errors: "Product not available for sale" }, status: :unprocessable_entity unless product.sellable? && variant.sellable?
 
       quantity_to_add = params[:qty].to_i.positive? ? params[:qty].to_i : 1
       price = variant&.price
-
       item = @cart.cart_items.find_by(product: product, variant: variant)
 
       if item
@@ -43,11 +43,11 @@ module Api
     end
 
     def update_item
-      return render json: { errors: "Quantity must be greater than 0" }, status: :unprocessable_entity if params[:qty].to_i <= 0
+      qty = params[:qty].to_i
+      return render json: { errors: "Quantity must be greater than 0" }, status: :unprocessable_entity if qty <= 0
 
       price = @item.variant&.price
-      @item.qty = params[:qty].to_i
-      @item.total_price = @item.qty * price
+      @item.update!(qty: qty, total_price: qty * price)
 
       if @item.save
         render json: { data: CartSerializer.new(@cart) }, status: :ok
@@ -69,7 +69,7 @@ module Api
     private
 
     def set_cart
-      @cart = current_user.cart
+      @cart = current_user.cart || current_user.create_cart
       return render json: { errors: "Cart not found" }, status: :not_found unless @cart
     end
 

@@ -1,5 +1,5 @@
 ActiveAdmin.register Product do
-  permit_params :name, :slug, :sku, :description, :material, :pieces_count, :brand, :is_featured, :is_new, :views_count, :subcategory_id, product_features_attributes: [:id, :name, :_destroy],
+  permit_params :name, :slug, :sku, :tax_rate, :description, :material, :pieces_count, :brand, :is_featured, :is_new, :views_count, :subcategory_id, product_features_attributes: [:id, :name, :_destroy],
   product_specifications_attributes: [:id, :key, :value, :_destroy],
   product_includes_attributes: [:id, :item, :_destroy]
 
@@ -10,6 +10,7 @@ ActiveAdmin.register Product do
     column :name
     column :slug
     column :sku
+    column :tax_rate
     column :description
     column :material
     column :pieces_count
@@ -30,6 +31,7 @@ ActiveAdmin.register Product do
     f.inputs do
       f.input :name
       f.input :sku
+      f.input :tax_rate
       f.input :description
       f.input :material
       f.input :pieces_count
@@ -65,6 +67,7 @@ ActiveAdmin.register Product do
       row :name
       row :slug
       row :sku
+      row :tax_rate
       row :description
       row :material
       row :pieces_count

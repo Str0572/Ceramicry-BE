@@ -9,7 +9,8 @@ class CartItem < ApplicationRecord
   before_save :set_total_price
 
   def set_total_price
-    self.total_price = (variant&.price || product.price) * qty
+    base_price = variant&.price || 0
+    self.total_price = base_price * qty
   end
 
 end

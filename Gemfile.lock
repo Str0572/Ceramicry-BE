@@ -399,6 +399,7 @@ DEPENDENCIES
   image_processing (~> 1.2)
   jwt
   kamal
+  kaminari
   pg
   puma (>= 5.0)
   rack-cors

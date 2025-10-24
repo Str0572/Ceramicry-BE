@@ -1,5 +1,5 @@
 class ProductSerializer < ActiveModel::Serializer
-  attributes :id, :name, :slug, :sku, :description, :average_rating, :review_count, :material, :pieces_count, :brand, :is_featured, :is_new, :views_count, :features, :specifications, :whats_included
+  attributes :id, :name, :slug, :sku, :description, :tax_rate, :average_rating, :review_count, :material, :pieces_count, :brand, :is_featured, :is_new, :views_count, :features, :specifications, :whats_included
 
   has_many :variants, serializer: VariantSerializer
   belongs_to :subcategory

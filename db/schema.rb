@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_09_082151) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_032456) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,6 +26,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_09_082151) do
     t.datetime "reset_password_sent_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "account_type"
+    t.datetime "deleted_at"
     t.index ["email"], name: "index_accounts_on_email", unique: true
     t.index ["reset_password_token"], name: "index_accounts_on_reset_password_token", unique: true
   end
@@ -139,7 +141,72 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_09_082151) do
     t.integer "usage_limit", default: 0
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "discount_type", default: "percentage", null: false
     t.index ["code"], name: "index_offers_on_code", unique: true
+  end
+
+  create_table "order_items", force: :cascade do |t|
+    t.bigint "order_id", null: false
+    t.bigint "product_id", null: false
+    t.bigint "variant_id"
+    t.integer "quantity", default: 1, null: false
+    t.decimal "unit_price", precision: 10, scale: 2, null: false
+    t.decimal "total_price", precision: 10, scale: 2, null: false
+    t.string "product_name"
+    t.string "variant_details"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.decimal "tax_rate", precision: 5, scale: 2, default: "0.0", null: false
+    t.decimal "tax_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.index ["order_id", "product_id", "variant_id"], name: "index_order_items_on_order_product_variant", unique: true
+    t.index ["order_id"], name: "index_order_items_on_order_id"
+    t.index ["product_id"], name: "index_order_items_on_product_id"
+    t.index ["variant_id"], name: "index_order_items_on_variant_id"
+  end
+
+  create_table "order_statuses", force: :cascade do |t|
+    t.bigint "order_id", null: false
+    t.string "status", null: false
+    t.text "notes"
+    t.integer "step_index"
+    t.string "user_message"
+    t.datetime "estimated_delivery"
+    t.bigint "created_by_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_order_statuses_on_created_by_id"
+    t.index ["order_id", "created_at"], name: "index_order_statuses_on_order_id_and_created_at"
+    t.index ["order_id"], name: "index_order_statuses_on_order_id"
+    t.index ["status"], name: "index_order_statuses_on_status"
+  end
+
+  create_table "orders", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "shipping_address_id", null: false
+    t.bigint "billing_address_id", null: false
+    t.string "order_number", null: false
+    t.string "status", default: "pending", null: false
+    t.decimal "subtotal", precision: 10, scale: 2, default: "0.0", null: false
+    t.decimal "tax_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.decimal "shipping_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.decimal "discount_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.decimal "total_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.string "payment_method"
+    t.string "payment_status", default: "pending", null: false
+    t.text "notes"
+    t.datetime "shipped_at"
+    t.datetime "delivered_at"
+    t.datetime "cancelled_at"
+    t.datetime "estimated_delivery"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_orders_on_account_id"
+    t.index ["billing_address_id"], name: "index_orders_on_billing_address_id"
+    t.index ["created_at"], name: "index_orders_on_created_at"
+    t.index ["order_number"], name: "index_orders_on_order_number", unique: true
+    t.index ["payment_status"], name: "index_orders_on_payment_status"
+    t.index ["shipping_address_id"], name: "index_orders_on_shipping_address_id"
+    t.index ["status"], name: "index_orders_on_status"
   end
 
   create_table "product_features", force: :cascade do |t|
@@ -182,6 +249,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_09_082151) do
     t.bigint "subcategory_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "deleted_at"
+    t.decimal "tax_rate", precision: 5, scale: 2, default: "0.0", null: false
     t.index ["is_featured"], name: "index_products_on_is_featured"
     t.index ["sku"], name: "index_products_on_sku", unique: true
     t.index ["slug"], name: "index_products_on_slug", unique: true
@@ -223,6 +292,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_09_082151) do
     t.integer "stock_quantity", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "deleted_at"
     t.index ["product_id"], name: "index_variants_on_product_id"
     t.index ["sku"], name: "index_variants_on_sku", unique: true
   end
@@ -236,6 +306,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_09_082151) do
   add_foreign_key "carts", "accounts"
   add_foreign_key "offer_usages", "accounts"
   add_foreign_key "offer_usages", "offers"
+  add_foreign_key "order_items", "orders"
+  add_foreign_key "order_items", "products"
+  add_foreign_key "order_items", "variants"
+  add_foreign_key "order_statuses", "accounts", column: "created_by_id"
+  add_foreign_key "order_statuses", "orders"
+  add_foreign_key "orders", "accounts"
+  add_foreign_key "orders", "addresses", column: "billing_address_id"
+  add_foreign_key "orders", "addresses", column: "shipping_address_id"
   add_foreign_key "product_features", "products"
   add_foreign_key "product_includes", "products"
   add_foreign_key "product_specifications", "products"

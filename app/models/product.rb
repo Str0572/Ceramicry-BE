@@ -10,7 +10,7 @@ class Product < ApplicationRecord
 
   has_many :variants, dependent: :destroy
   has_many :cart_items, dependent: :destroy
-  # has_many :order_items, dependent: :destroy
+  has_many :order_items, dependent: :destroy
   has_many :reviews, dependent: :destroy
 
   validates :name, presence: true, length: { maximum: 200 }
@@ -20,6 +20,7 @@ class Product < ApplicationRecord
 
   scope :featured, -> { where(is_featured: true) }
   scope :new_arrivals, -> { where('created_at >= ?', 30.days.ago) } 
+  scope :active, -> { where(deleted_at: nil) }
 
   before_validation :set_slug, on: [:create, :update]
 
@@ -33,6 +34,24 @@ class Product < ApplicationRecord
   
   def review_count
     reviews.count
+  end
+
+  def destroy
+    if order_items.exists?
+      errors.add(:base, "Cannot delete a product in existing orders.")
+      throw(:abort)
+    else
+      update(deleted_at: Time.current)
+    end
+  end
+
+  def deleted?
+    !!deleted_at
+  end
+
+  # Sellability logic for frontend/back
+  def sellable?
+    !deleted? && variants.active.any? { |v| v.sellable? }
   end
 
   private

@@ -3,18 +3,18 @@ module Api
     skip_before_action :authenticate_request
 
     def index
-      products = Product.includes(:variants).all
+      products = Product.includes(:variants, subcategory: :category).all
 
       if params[:subcategory].present?
         subcategory = Subcategory.find_by(slug: params[:subcategory])
         return render json: { data: [], message: "No products found" }, status: :not_found unless subcategory
-        products = subcategory.products
+        products = subcategory ? subcategory.products : Product.none
       end
 
       if params[:category].present?
         category = Category.find_by(slug: params[:category])
         return render json: { data: [], message: "No products found" }, status: :not_found unless category
-        products = products.joins(:subcategory).where(subcategories: { category_id: category.id })
+        products = category ? products.joins(:subcategory).where(subcategories: { category_id: category.id }) : Product.none
       end
 
       products = products.joins(:variants).distinct

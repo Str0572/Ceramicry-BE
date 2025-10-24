@@ -4,11 +4,15 @@ class Account < ApplicationRecord
   has_many :addresses, dependent: :destroy
   has_many :cart_items, dependent: :destroy
   has_one :cart, dependent: :destroy
-  # has_many :orders, dependent: :destroy
+  has_many :orders, dependent: :destroy
   has_many :reviews, dependent: :destroy
   has_many :offer_usages, dependent: :destroy
   has_many :offers, through: :offer_usages
+  has_many :order_statuses, dependent: :destroy
 
+  enum :account_type, { customer: 0, delivery_partner: 1}
+  
+  validates :account_type, inclusion: { in: %w[customer delivery_partner] }
   validates :full_name, presence: true
   validates :full_name, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }
   validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }

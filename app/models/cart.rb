@@ -8,7 +8,7 @@ class Cart < ApplicationRecord
   end
 
   def subtotal
-    cart_items.includes(:product, :variant).sum(&:total_price)
+    cart_items.sum(:total_price)
   end
 
   def clear

@@ -1,14 +1,14 @@
 class Address < ApplicationRecord
   belongs_to :account
-  # has_many :orders, foreign_key: :shipping_address_id
-  # has_many :billing_orders, class_name: 'Order', foreign_key: :billing_address_id
+  has_many :shipping_orders, class_name: 'Order', foreign_key: :shipping_address_id, dependent: :nullify
+  has_many :billing_orders, class_name: 'Order', foreign_key: :billing_address_id, dependent: :nullify
   
   validates :name, :phone, :address_line1, :city, :state, :pincode, :country, presence: true
   validates :pincode, format: { with: /\A[0-9]{6}\z/, message: "must be 6 digits" }
   validates :phone, format: { with: /\A[+]?[0-9]{10,15}\z/ }
-  # validates :address_type, inclusion: { in: %w[home office other] }
+  validates :address_type, inclusion: { in: %w[home work other] }
 
-  # enum address_type: { home: 0, office: 1, other: 2 }
+  enum :address_type, { home: 0, work: 1, other: 2 }
 
   scope :default, -> { where(is_default: true) }
 

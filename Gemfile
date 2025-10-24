@@ -52,3 +52,4 @@ gem 'sass-rails'
 gem 'sprockets'
 gem 'arctic_admin'
 gem 'dotenv-rails', groups: [:development, :test]
+gem 'kaminari'

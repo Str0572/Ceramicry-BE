@@ -1,11 +1,12 @@
 ActiveAdmin.register Offer do
-  permit_params :code, :discount, :min_order, :description, :active, :expires_at, :usage_limit
+  permit_params :code, :discount, :discount_type, :min_order, :description, :active, :expires_at, :usage_limit
 
   index do
     selectable_column
     id_column
     column :code
     column :discount
+    column :discount_type
     column :min_order
     column :usage_limit
     column("Used") { |offer| offer.offer_usages.count }
@@ -20,6 +21,7 @@ ActiveAdmin.register Offer do
     f.inputs "Offer Details" do
       f.input :code
       f.input :discount
+      f.input :discount_type, as: :select
       f.input :min_order
       f.input :description
       f.input :usage_limit, hint: "0 means unlimited"
@@ -33,6 +35,7 @@ ActiveAdmin.register Offer do
     attributes_table do
       row :code
       row :discount
+      row :discount_type
       row :min_order
       row :description
       row :usage_limit

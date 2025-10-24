@@ -116,11 +116,11 @@ module Api
     private
 
     def account_params
-      params.require(:account).permit(:full_name, :email, :password, :password_confirmation, :mobile)
+      params.require(:account).permit(:full_name, :email, :password, :password_confirmation, :mobile, :account_type)
     end
 
     def update_params
-      params.require(:account).permit(:full_name, :mobile, :email)
+      params.require(:account).permit(:full_name, :mobile, :email, :account_type)
     end
 
     def find_user
@@ -137,10 +137,10 @@ module Api
 				return render json: { error: "Unauthorized access" }, status: :unauthorized
 			end
 
-			allowed_roles = %w[admin]
+			allowed_roles = %w[delivery_partner]
 
-			unless allowed_roles.include?(@current_user.user_type)
-				render json: { error: "Access denied for role: #{@current_user.user_type}" }, status: :forbidden
+			unless allowed_roles.include?(@current_user.account_type)
+				render json: { error: "Access denied for role: #{@current_user.account_type}" }, status: :forbidden
 			end
 		end
   end
