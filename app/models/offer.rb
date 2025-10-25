@@ -35,4 +35,11 @@ class Offer < ApplicationRecord
     
     true
   end
+
+  def valid_for_account_and_subtotal?(account, subtotal)
+    return false unless active? && !expired? && !usage_exceeded?
+    return false if subtotal.nil? || subtotal < min_order
+    return false if account.offer_usages.exists?(offer: self)
+    true
+  end
 end

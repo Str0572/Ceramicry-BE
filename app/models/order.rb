@@ -12,8 +12,10 @@ class Order < ApplicationRecord
     confirmed: 'confirmed',
     processing: 'processing',
     shipped: 'shipped',
+    out_for_delivery: 'out_for_delivery',
     delivered: 'delivered',
     cancelled: 'cancelled',
+    returned: 'returned',
     refunded: 'refunded'
   }
 
@@ -57,7 +59,7 @@ class Order < ApplicationRecord
   end
 
   def can_be_refunded?
-    %w[delivered].include?(status) && payment_status == 'paid'
+    %w[delivered returned].include?(status) && payment_status == 'paid'
   end
 
   def can_be_shipped?
@@ -65,17 +67,17 @@ class Order < ApplicationRecord
   end
 
   def can_be_delivered?
-    status == 'shipped'
+    %w[shipped out_for_delivery].include?(status)
   end
 
   def can_be_returned?
     delivered_at.present? && delivered_at >= 7.days.ago && status == 'delivered'
   end
 
-  before_create :set_default_estimated_delivery
+  before_save :set_default_estimated_delivery
 
   def set_default_estimated_delivery
-    self.estimated_delivery ||= 5.days.from_now
+    self.estimated_delivery ||= 5.days.from_now.in_time_zone('Asia/Kolkata')
   end
 
   def update_status!(new_status, notes: nil, created_by: nil)
@@ -139,7 +141,7 @@ class Order < ApplicationRecord
   def create_initial_status
     order_statuses.create!(
       status: 'pending',
-      notes: 'Order created Successfully.',
+      notes: 'Order Placed Successfully.',
       created_by: account
     )
   end
@@ -149,7 +151,7 @@ class Order < ApplicationRecord
       'pending' => %w[confirmed cancelled],
       'confirmed' => %w[processing cancelled],
       'processing' => %w[shipped cancelled],
-      'shipped' => %w[delivered],
+      'shipped' => %w[delivered out_for_delivery],
       'delivered' => %w[refunded],
       'cancelled' => [],
       'refunded' => []

@@ -26,6 +26,7 @@ class CheckoutService
     ActiveRecord::Base.transaction do
       create_order
       create_order_items
+      update_inventory_quantities
       apply_discounts
       update_order_totals
       clear_cart
@@ -44,6 +45,10 @@ class CheckoutService
   private
 
   def create_order
+    initial_discount = 0
+    if @offer && @offer.valid_for_account_and_subtotal?(@account, cart_subtotal)
+      initial_discount = calculate_discount_amount
+    end
 
     @order = Order.create!(
       account: @account,
@@ -54,8 +59,8 @@ class CheckoutService
       subtotal: cart_subtotal,
       tax_amount: calculate_tax,
       shipping_amount: calculate_shipping,
-      discount_amount: 0,
-      total_amount: cart_subtotal + calculate_tax + calculate_shipping
+      discount_amount: initial_discount,
+      total_amount: cart_subtotal + calculate_tax + calculate_shipping - initial_discount
     )
   end
 
@@ -77,12 +82,22 @@ class CheckoutService
     end
   end
 
-  def apply_discounts
-    return unless @offer&.active? && @offer.valid_for_order?(@order)
+  def update_inventory_quantities
+    @order.order_items.each do |order_item|
+      if order_item&.variant
+        new_quantity = [order_item.variant&.stock_quantity - order_item.quantity, 0].max
+        order_item.variant.update!(stock_quantity: new_quantity)
+      end
 
+      new_pieces_count = [order_item.product&.pieces_count - order_item.quantity, 0].max
+      order_item.product.update!(pieces_count: new_pieces_count)
+    end
+  end
+
+  def apply_discounts
+    return unless @offer && @offer.valid_for_account_and_subtotal?(@account, cart_subtotal)
     discount_amount = calculate_discount_amount
     @order.update!(discount_amount: discount_amount)
-    
     record_offer_usage if discount_amount.positive?
   end
 
@@ -110,11 +125,11 @@ class CheckoutService
   end
 
   def cart_items
-    @account.cart.cart_items.includes(:product, :variant)
+    @account.cart ? @account.cart.cart_items.includes(:product, :variant) : []
   end
 
   def cart_subtotal
-    @account.cart.subtotal
+    @account.cart&.subtotal || 0
   end
 
   def calculate_tax
@@ -126,11 +141,11 @@ class CheckoutService
   end
 
   def calculate_shipping
-    cart_subtotal > 10_000 ? 0 : 200
+    cart_subtotal > 10_000 ? 0 : 500
   end
 
   def calculate_discount_amount
-    return 0 unless @offer&.active? && @offer.valid_for_order?(@order)
+    return 0 unless @offer && @offer.valid_for_account_and_subtotal?(@account, cart_subtotal)
 
     case @offer.discount_type
     when 'percentage'

@@ -8,8 +8,10 @@ class OrderStatus < ApplicationRecord
     confirmed: 'confirmed',
     processing: 'processing',
     shipped: 'shipped',
+    out_for_delivery: 'out_for_delivery',
     delivered: 'delivered',
     cancelled: 'cancelled',
+    returned: 'returned',
     refunded: 'refunded'
   }
 
@@ -21,12 +23,13 @@ class OrderStatus < ApplicationRecord
   MILESTONES = [
     { key: 'pending',    name: 'Ordered',         explanation: 'We have received your order.', index: 0 },
     { key: 'confirmed',  name: 'Confirmed',       explanation: 'Your order has been confirmed.', index: 1 },
-    { key: 'packed',     name: 'Packed',          explanation: 'Your items are being packed.', index: 2 },
+    { key: 'processing',     name: 'Packed',          explanation: 'Your items are being packed.', index: 2 },
     { key: 'shipped',    name: 'Shipped',         explanation: 'Your order has shipped!', index: 3 },
     { key: 'out_for_delivery', name: 'Out for Delivery', explanation: 'Your order is out for delivery.', index: 4 },
     { key: 'delivered',  name: 'Delivered',       explanation: 'Order delivered. We hope you enjoy!', index: 5 },
     { key: 'cancelled',  name: 'Cancelled',       explanation: 'This order was cancelled.', index: 6 },
-    { key: 'returned',   name: 'Returned',        explanation: 'Order returned. Refund will be processed.', index: 7 }
+    { key: 'returned',   name: 'Returned',        explanation: 'Order returned. Refund will be processed.', index: 7 },
+    { key: 'refunded',   name: 'Refunded',        explanation: 'Order returned successfully. Refund is in processing.', index: 8 }
   ].freeze
 
   def self.milestone_for(status)

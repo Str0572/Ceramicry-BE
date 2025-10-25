@@ -37,13 +37,15 @@ Rails.application.routes.draw do
     patch '/cart/update_item', to: 'carts#update_item'
     delete '/cart/remove_item', to: 'carts#remove_item'
 
-    resources :orders, only: [:index, :show, :create] do
+    resources :orders do
       collection do
         post :checkout
+        post :order_review
         get :status_options
       end
       member do
         patch :cancel
+        patch :request_return
         get :track
         post :add_notes
       end

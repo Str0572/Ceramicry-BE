@@ -16,7 +16,7 @@ ActiveAdmin.register Order do
       status_tag order.payment_status, class: order.payment_status
     end
     column :total_amount do |order|
-      number_to_currency(order.total_amount)
+      number_to_currency(order.total_amount, unit: "₹", format: "%u %n", precision: 2)
     end
     column :created_at
     actions
@@ -37,19 +37,19 @@ ActiveAdmin.register Order do
       end
       row :payment_method
       row :subtotal do |order|
-        number_to_currency(order.subtotal)
+        number_to_currency(order.subtotal, unit: "₹", format: "%u %n", precision: 2)
       end
       row :tax_amount do |order|
-        number_to_currency(order.tax_amount)
+        number_to_currency(order.tax_amount, unit: "₹", format: "%u %n", precision: 2)
       end
       row :shipping_amount do |order|
-        number_to_currency(order.shipping_amount)
+        number_to_currency(order.shipping_amount, unit: "₹", format: "%u %n", precision: 2)
       end
       row :discount_amount do |order|
-        number_to_currency(order.discount_amount)
+        number_to_currency(order.discount_amount, unit: "₹", format: "%u %n", precision: 2)
       end
       row :total_amount do |order|
-        number_to_currency(order.total_amount)
+        number_to_currency(order.total_amount, unit: "₹", format: "%u %n", precision: 2)
       end
       row :shipping_address do |order|
         order.shipping_address_full
@@ -75,10 +75,10 @@ ActiveAdmin.register Order do
         end
         column :quantity
         column :unit_price do |item|
-          number_to_currency(item.unit_price)
+          number_to_currency(item.unit_price, unit: "₹", format: "%u %n", precision: 2)
         end
         column :total_price do |item|
-          number_to_currency(item.total_price)
+          number_to_currency(item.total_price, unit: "₹", format: "%u %n", precision: 2)
         end
       end
     end
@@ -118,7 +118,7 @@ ActiveAdmin.register Order do
     new_status = params[:status]
     notes = params[:notes]
     
-    if order.update_status!(new_status, notes: notes, created_by: current_admin_user)
+    if order.update_status!(new_status, notes: notes)
       redirect_to admin_order_path(order), notice: "Order status updated to #{new_status.humanize}"
     else
       redirect_to admin_order_path(order), alert: "Failed to update order status"
@@ -149,6 +149,7 @@ ActiveAdmin.register Order do
   scope :confirmed, -> { where(status: 'confirmed') }
   scope :processing, -> { where(status: 'processing') }
   scope :shipped, -> { where(status: 'shipped') }
+  scope :out_for_delivery, -> {where(status: 'out_for_delivery')}
   scope :delivered, -> { where(status: 'delivered') }
   scope :cancelled, -> { where(status: 'cancelled') }
   scope :refunded, -> { where(status: 'refunded') }

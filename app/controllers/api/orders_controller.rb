@@ -41,7 +41,7 @@ module Api
         return render json: { errors: ["Shipping and billing addresses are required"] }, status: :unprocessable_entity
       end
 
-      checkout_service = CheckoutService.new(checkout_params.merge(account_id: current_user.id))
+      checkout_service = CheckoutService.new(checkout_params.merge(account_id: current_user.id, offer_code: params[:offer_code]))
       
       if checkout_service.call
         render json: {
@@ -127,6 +127,52 @@ module Api
           payment_methods: Order.payment_methods.keys.map { |method| { value: method, label: method.humanize } }
         },
         message: 'Status options fetched successfully'
+      }, status: :ok
+    end
+
+    def order_review
+      unless current_user.cart&.cart_items&.any?
+        return render json: { errors: ["Cart is empty"] }, status: :unprocessable_entity
+      end
+
+      unless params[:shipping_address_id].present? && params[:billing_address_id].present?
+        return render json: { errors: ["Shipping and billing addresses are required"] }, status: :unprocessable_entity
+      end
+
+      temp_checkout = CheckoutService.new(
+        account_id: current_user.id,
+        shipping_address_id: params[:shipping_address_id],
+        billing_address_id: params[:billing_address_id],
+        payment_method: params[:payment_method] || 'cash_on_delivery',
+        notes: params[:notes],
+        offer_code: params[:offer_code]
+      )
+
+      unless temp_checkout.valid?
+        return render json: { errors: temp_checkout.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      cart_items = temp_checkout.send(:cart_items)
+      items = cart_items.map do |item|
+        CartItemSerializer.new(item).as_json
+      end
+      
+      tax_amount = temp_checkout.send(:calculate_tax)
+      shipping_amount = temp_checkout.send(:calculate_shipping)
+      discount_amount = temp_checkout.send(:calculate_discount_amount)
+      subtotal = temp_checkout.send(:cart_subtotal)
+      total_amount = subtotal + tax_amount + shipping_amount - discount_amount
+      
+      render json: {
+        data: {
+          items: items,
+          subtotal: subtotal,
+          tax_amount: tax_amount,
+          shipping_amount: shipping_amount,
+          discount_amount: discount_amount,
+          total_amount: total_amount
+        },
+        message: 'Order review calculated successfully'
       }, status: :ok
     end
 
