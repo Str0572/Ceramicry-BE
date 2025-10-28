@@ -1,1 +1,51 @@
 @import "arctic_admin/base";
+@import "activeadmin_addons/all";
+
+$status-tag-pending-color:       #f4c542;  // yellow-orange (waiting)
+$status-tag-confirmed-color:     #2ecc71;  // green (confirmed)
+$status-tag-processing-color:    #3498db;  // blue (in progress)
+$status-tag-shipped-color:       #17a2b8;  // teal-blue (shipped)
+$status-tag-outdelivery-color:   #007bff;  // bright blue (out for delivery)
+$status-tag-delivered-color:     #28a745;  // strong green (delivered)
+$status-tag-cancelled-color:     #dc3545;  // red (cancelled)
+$status-tag-returned-color:      #fd7e14;  // orange (returned)
+$status-tag-refunded-color:      #6f42c1;  // purple (refunded)
+
+.status_tag {
+  &.pending {
+    background: $status-tag-pending-color;
+    color: #fff;
+  }
+  &.confirmed {
+    background: $status-tag-confirmed-color;
+    color: #fff;
+  }
+  &.processing {
+    background: $status-tag-processing-color;
+    color: #fff;
+  }
+  &.shipped {
+    background: $status-tag-shipped-color;
+    color: #fff;
+  }
+  &.out_for_delivery {
+    background: $status-tag-outdelivery-color;
+    color: #fff;
+  }
+  &.delivered {
+    background: $status-tag-delivered-color;
+    color: #fff;
+  }
+  &.cancelled {
+    background: $status-tag-cancelled-color;
+    color: #fff;
+  }
+  &.returned {
+    background: $status-tag-returned-color;
+    color: #fff;
+  }
+  &.refunded {
+    background: $status-tag-refunded-color;
+    color: #fff;
+  }
+}

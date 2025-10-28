@@ -1,0 +1,47 @@
+<canvas id="revenueChart" style="max-height: 300px;"></canvas>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('revenueChart').getContext('2d');
+    var data = <%= raw data.to_json %>;
+|---
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.map(function(item) { return item.date; }),
+        datasets: [{
+          label: 'Revenue (₹)',
+          data: data.map(function(item) { return item.amount; }),
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.1,
+          fill: true
+        }]
+      },
+      options: {
+        responsiveWrap: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₹' + value.toLocaleString();
+              }
+            }
+          }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'Revenue: ₹' + context.parsed.y.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+    });
+  });
+</script>
+

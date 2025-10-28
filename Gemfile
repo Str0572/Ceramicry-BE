@@ -53,3 +53,6 @@ gem 'sprockets'
 gem 'arctic_admin'
 gem 'dotenv-rails', groups: [:development, :test]
 gem 'kaminari'
+gem 'activeadmin_addons'
+gem "chartkick"
+gem 'groupdate'

@@ -9,9 +9,7 @@ ActiveAdmin.register Order do
     column :account do |order|
       link_to order.account.full_name, admin_account_path(order.account)
     end
-    column :status do |order|
-      status_tag order.status, class: order.status
-    end
+    tag_column :status, interactive: true
     column :payment_status do |order|
       status_tag order.payment_status, class: order.payment_status
     end
@@ -113,31 +111,8 @@ ActiveAdmin.register Order do
     f.actions
   end
 
-  member_action :update_status, method: :patch do
-    order = Order.find(params[:id])
-    new_status = params[:status]
-    notes = params[:notes]
-    
-    if order.update_status!(new_status, notes: notes)
-      redirect_to admin_order_path(order), notice: "Order status updated to #{new_status.humanize}"
-    else
-      redirect_to admin_order_path(order), alert: "Failed to update order status"
-    end
-  end
-
-  action_item :update_status, only: :show do
-    if order.can_be_cancelled? || order.can_be_shipped? || order.can_be_delivered?
-      dropdown_menu "Update Status" do
-        Order.statuses.keys.each do |status|
-          item status.humanize, update_status_admin_order_path(order, status: status),
-               method: :patch,
-               data: { confirm: "Are you sure you want to mark this order as #{status.humanize}?" }
-        end
-      end
-    end
-  end
-
   filter :order_number
+  # Enhanced account filter; use simple select to avoid extra endpoints
   filter :account, as: :select, collection: -> { Account.all.map { |a| [a.full_name, a.id] } }
   filter :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
   filter :payment_status, as: :select, collection: Order.payment_statuses.keys.map { |s| [s.humanize, s] }
@@ -152,5 +127,6 @@ ActiveAdmin.register Order do
   scope :out_for_delivery, -> {where(status: 'out_for_delivery')}
   scope :delivered, -> { where(status: 'delivered') }
   scope :cancelled, -> { where(status: 'cancelled') }
+  scope :returned, -> { where(status: 'returned') }
   scope :refunded, -> { where(status: 'refunded') }
 end

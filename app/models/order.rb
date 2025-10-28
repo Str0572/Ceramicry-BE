@@ -49,6 +49,7 @@ class Order < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :by_status, ->(status) { where(status: status) }
   scope :by_payment_status, ->(payment_status) { where(payment_status: payment_status) }
+  after_update :track_status_change, if: :saved_change_to_status?
 
   def self.generate_order_number
     "ORD#{Time.current.strftime('%Y%m%d')}#{SecureRandom.alphanumeric(4).upcase}"
@@ -152,11 +153,19 @@ class Order < ApplicationRecord
       'confirmed' => %w[processing cancelled],
       'processing' => %w[shipped cancelled],
       'shipped' => %w[delivered out_for_delivery],
-      'delivered' => %w[refunded],
+      'delivered' => %w[returned refunded],
       'cancelled' => [],
       'refunded' => []
     }
     
     valid_transitions[status]&.include?(new_status) || false
+  end
+
+  def track_status_change
+    order_statuses.create!(
+      status: status,
+      notes: "Status changed to #{status.humanize} via admin.",
+      created_by: account
+    )
   end
 end

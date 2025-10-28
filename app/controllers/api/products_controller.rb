@@ -3,18 +3,26 @@ module Api
     skip_before_action :authenticate_request
 
     def index
-      products = Product.includes(:variants, subcategory: :category).all
+      products = Product.includes(:variants, subcategory: :category).references(:variants, :subcategory)
+
+      if params[:search].present?
+        q = params[:search].strip.downcase
+        products = products.where(
+          "LOWER(products.name) LIKE :q OR LOWER(products.description) LIKE :q OR LOWER(products.material) LIKE :q OR LOWER(products.brand) LIKE :q OR LOWER(subcategories.name) LIKE :q",
+          q: "%#{q}%"
+        )
+      end
 
       if params[:subcategory].present?
         subcategory = Subcategory.find_by(slug: params[:subcategory])
         return render json: { data: [], message: "No products found" }, status: :not_found unless subcategory
-        products = subcategory ? subcategory.products : Product.none
+        products = products.where(subcategory: subcategory)
       end
 
       if params[:category].present?
         category = Category.find_by(slug: params[:category])
         return render json: { data: [], message: "No products found" }, status: :not_found unless category
-        products = category ? products.joins(:subcategory).where(subcategories: { category_id: category.id }) : Product.none
+        products = products.joins(:subcategory).where(subcategories: { category_id: category.id })
       end
 
       products = products.joins(:variants).distinct
@@ -47,21 +55,6 @@ module Api
         render json: { data: ProductSerializer.new(product), message: "Product details fetched successfully" }, status: :ok
       else
         render json: { errors: "Product not found" }, status: :not_found
-      end
-    end
-
-    def search
-      query = params[:q]&.strip
-
-      products = Product.where("name ILIKE ? OR description ILIKE ?", "%#{query}%", "%#{query}%").includes(:variants)
-
-      if products.exists?
-        render json: {
-          data: ActiveModelSerializers::SerializableResource.new(products, each_serializer: ProductSerializer),
-          products_count: products.size, message: "Products matching '#{query}' fetched successfully"
-        }, status: :ok
-      else
-        render json: { errors: "No products found for '#{query}'" }, status: :not_found
       end
     end
   end

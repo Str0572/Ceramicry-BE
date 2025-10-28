@@ -21,9 +21,6 @@ Rails.application.routes.draw do
       post :apply, on: :member
     end
     resources :products do
-      collection do
-        get :search
-      end
       resources :variants
       resources :reviews, only: [:index, :create]
     end
@@ -50,6 +47,7 @@ Rails.application.routes.draw do
         post :add_notes
       end
     end
+    resources :subscribes, only: [:create]
 
   end
 end
