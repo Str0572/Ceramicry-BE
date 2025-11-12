@@ -47,7 +47,7 @@ ActiveAdmin.register OrderStatus do
   end
 
   filter :order, as: :select, collection: -> { Order.all.map { |o| [o.order_number, o.id] } }
-  filter :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
+  # filter :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
   filter :created_by, as: :select, collection: -> { Account.all.map { |a| [a.full_name, a.id] } }
   filter :created_at
 

@@ -27,7 +27,7 @@ ActiveAdmin.register Variant do
   filter :sku
   filter :size
   filter :stock_quantity
-  filter :product_id, as: :select, collection: Product.all.pluck(:name, :id)
+  # filter :product_id, as: :select, collection: Product.all.pluck(:name, :id)
 
   form do |f|
     f.inputs do

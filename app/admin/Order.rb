@@ -119,8 +119,8 @@ ActiveAdmin.register Order do
   filter :order_number
   # Enhanced account filter; use simple select to avoid extra endpoints
   filter :account, as: :select, collection: -> { Account.all.map { |a| [a.full_name, a.id] } }
-  filter :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
-  filter :payment_status, as: :select, collection: Order.payment_statuses.keys.map { |s| [s.humanize, s] }
+  # filter :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
+  # filter :payment_status, as: :select, collection: Order.payment_statuses.keys.map { |s| [s.humanize, s] }
   filter :created_at
   filter :total_amount
 
