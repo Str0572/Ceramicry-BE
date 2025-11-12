@@ -25,7 +25,7 @@ ActiveAdmin.register Product do
   end
 
   filter :name
-  filter :subcategory_id, as: :select, collection: Subcategory.all.pluck(:name, :id)
+  # filter :subcategory_id, as: :select, collection: Subcategory.all.pluck(:name, :id)
 
   form do |f|
     f.inputs do

@@ -8,3 +8,7 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 AdminUser.create!(email: 'admin@ceramicry.com', password: 'password', password_confirmation: 'password')
+Category.find_or_create_by!(name: 'Dinnerware', description: 'Plates, bowls, and other dinnerware items.')
+Category.find_or_create_by!(name: 'Drinkware', description: 'Cups, mugs, and other drinkware items.')
+Category.find_or_create_by!(name: 'Serveware', description: 'Serving dishes and platters.')
+Category.find_or_create_by!(name: 'Sets', description: 'Coordinated sets of dinnerware.')
