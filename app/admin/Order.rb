@@ -1,6 +1,7 @@
 ActiveAdmin.register Order do
   permit_params :account_id, :shipping_address_id, :billing_address_id, :status, 
-                :payment_status, :payment_method, :notes, :shipped_at, :delivered_at, :cancelled_at
+                :payment_status, :payment_method, :notes, :shipped_at, :delivered_at, :cancelled_at,
+                :delivery_agent_id
 
   index do
     selectable_column
@@ -59,6 +60,9 @@ ActiveAdmin.register Order do
       row :shipped_at
       row :delivered_at
       row :cancelled_at
+      row :delivery_agent do |order|
+        order.delivery_agent&.full_name
+      end
       row :created_at
       row :updated_at
     end
@@ -104,6 +108,7 @@ ActiveAdmin.register Order do
       f.input :payment_status, as: :select, collection: Order.payment_statuses.keys.map { |s| [s.humanize, s] }
       f.input :payment_method, as: :select, collection: Order.payment_methods.keys.map { |m| [m.humanize, m] }
       f.input :notes, as: :text
+      f.input :delivery_agent, as: :select, collection: DeliveryAgent.all.map { |a| [a.full_name, a.id] }, include_blank: true
       f.input :shipped_at, as: :datetime_picker
       f.input :delivered_at, as: :datetime_picker
       f.input :cancelled_at, as: :datetime_picker
@@ -129,4 +134,53 @@ ActiveAdmin.register Order do
   scope :cancelled, -> { where(status: 'cancelled') }
   scope :returned, -> { where(status: 'returned') }
   scope :refunded, -> { where(status: 'refunded') }
+
+  action_item :approve, only: :show, if: proc { resource.status == 'pending' } do
+    link_to 'Approve Order', approve_admin_order_path(resource), method: :post
+  end
+
+  member_action :approve, method: :post do
+    resource.update_status!('confirmed', notes: 'Approved by admin')
+    redirect_to resource_path, notice: 'Order approved.'
+  end
+
+  action_item :assign_agent, only: :show do
+    link_to 'Assign Delivery Agent', edit_admin_order_path(resource)
+  end
+
+  action_item :mark_processing, only: :show, if: proc { resource.status == 'confirmed' } do
+    link_to 'Mark Processing', mark_processing_admin_order_path(resource), method: :post
+  end
+
+  member_action :mark_processing, method: :post do
+    resource.update_status!('processing', notes: 'Processing started by admin')
+    redirect_to resource_path, notice: 'Order marked as processing.'
+  end
+
+  action_item :mark_shipped, only: :show, if: proc { resource.status == 'processing' } do
+    link_to 'Mark Shipped', mark_shipped_admin_order_path(resource), method: :post
+  end
+
+  member_action :mark_shipped, method: :post do
+    resource.update_status!('shipped', notes: 'Shipped by admin')
+    redirect_to resource_path, notice: 'Order marked as shipped.'
+  end
+
+  action_item :mark_out_for_delivery, only: :show, if: proc { resource.status == 'shipped' } do
+    link_to 'Out for Delivery', mark_out_for_delivery_admin_order_path(resource), method: :post
+  end
+
+  member_action :mark_out_for_delivery, method: :post do
+    resource.update_status!('out_for_delivery', notes: 'Out for delivery')
+    redirect_to resource_path, notice: 'Order marked as out for delivery.'
+  end
+
+  action_item :mark_delivered, only: :show, if: proc { %w[out_for_delivery shipped].include?(resource.status) } do
+    link_to 'Mark Delivered', mark_delivered_admin_order_path(resource), method: :post
+  end
+
+  member_action :mark_delivered, method: :post do
+    resource.update_status!('delivered', notes: 'Delivered')
+    redirect_to resource_path, notice: 'Order marked as delivered.'
+  end
 end

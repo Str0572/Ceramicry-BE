@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_31_071109) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -24,10 +24,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
     t.datetime "otp_sent_at"
     t.string "reset_password_token"
     t.datetime "reset_password_sent_at"
+    t.datetime "deleted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.integer "account_type"
-    t.datetime "deleted_at"
     t.index ["email"], name: "index_accounts_on_email", unique: true
     t.index ["reset_password_token"], name: "index_accounts_on_reset_password_token", unique: true
   end
@@ -120,6 +119,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
     t.index ["slug"], name: "index_categories_on_slug", unique: true
   end
 
+  create_table "delivery_agents", force: :cascade do |t|
+    t.string "full_name"
+    t.string "phone"
+    t.string "email"
+    t.string "password_digest"
+    t.float "latitude"
+    t.float "longitude"
+    t.datetime "last_seen_at"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "offer_usages", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "offer_id", null: false
@@ -139,9 +151,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
     t.boolean "active", default: true
     t.datetime "expires_at"
     t.integer "usage_limit", default: 0
+    t.string "discount_type", default: "percentage", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "discount_type", default: "percentage", null: false
     t.index ["code"], name: "index_offers_on_code", unique: true
   end
 
@@ -154,14 +166,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
     t.decimal "total_price", precision: 10, scale: 2, null: false
     t.string "product_name"
     t.string "variant_details"
+    t.decimal "tax_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.decimal "tax_rate", precision: 5, scale: 2, default: "0.0", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.decimal "tax_rate", precision: 5, scale: 2, default: "0.0", null: false
-    t.decimal "tax_amount", precision: 10, scale: 2, default: "0.0", null: false
     t.index ["order_id", "product_id", "variant_id"], name: "index_order_items_on_order_product_variant", unique: true
     t.index ["order_id"], name: "index_order_items_on_order_id"
     t.index ["product_id"], name: "index_order_items_on_product_id"
     t.index ["variant_id"], name: "index_order_items_on_variant_id"
+  end
+
+  create_table "order_locations", force: :cascade do |t|
+    t.bigint "order_id", null: false
+    t.bigint "delivery_agent_id", null: false
+    t.float "latitude", null: false
+    t.float "longitude", null: false
+    t.datetime "recorded_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["delivery_agent_id"], name: "index_order_locations_on_delivery_agent_id"
+    t.index ["order_id", "recorded_at"], name: "index_order_locations_on_order_id_and_recorded_at"
+    t.index ["order_id"], name: "index_order_locations_on_order_id"
   end
 
   create_table "order_statuses", force: :cascade do |t|
@@ -200,9 +225,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
     t.datetime "estimated_delivery"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "delivery_agent_id"
     t.index ["account_id"], name: "index_orders_on_account_id"
     t.index ["billing_address_id"], name: "index_orders_on_billing_address_id"
     t.index ["created_at"], name: "index_orders_on_created_at"
+    t.index ["delivery_agent_id"], name: "index_orders_on_delivery_agent_id"
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["payment_status"], name: "index_orders_on_payment_status"
     t.index ["shipping_address_id"], name: "index_orders_on_shipping_address_id"
@@ -247,10 +274,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
     t.boolean "is_new", default: false
     t.integer "views_count", default: 0
     t.bigint "subcategory_id", null: false
+    t.decimal "tax_rate", precision: 5, scale: 2, default: "0.0", null: false
+    t.datetime "deleted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.datetime "deleted_at"
-    t.decimal "tax_rate", precision: 5, scale: 2, default: "0.0", null: false
     t.index ["is_featured"], name: "index_products_on_is_featured"
     t.index ["sku"], name: "index_products_on_sku", unique: true
     t.index ["slug"], name: "index_products_on_slug", unique: true
@@ -296,9 +323,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
     t.decimal "original_price", precision: 10, scale: 2
     t.integer "discount_percentage", default: 0
     t.integer "stock_quantity", default: 0, null: false
+    t.datetime "deleted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.datetime "deleted_at"
     t.index ["product_id"], name: "index_variants_on_product_id"
     t.index ["sku"], name: "index_variants_on_sku", unique: true
   end
@@ -315,11 +342,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_27_082845) do
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "products"
   add_foreign_key "order_items", "variants"
+  add_foreign_key "order_locations", "delivery_agents"
+  add_foreign_key "order_locations", "orders"
   add_foreign_key "order_statuses", "accounts", column: "created_by_id"
   add_foreign_key "order_statuses", "orders"
   add_foreign_key "orders", "accounts"
   add_foreign_key "orders", "addresses", column: "billing_address_id"
   add_foreign_key "orders", "addresses", column: "shipping_address_id"
+  add_foreign_key "orders", "delivery_agents"
   add_foreign_key "product_features", "products"
   add_foreign_key "product_includes", "products"
   add_foreign_key "product_specifications", "products"

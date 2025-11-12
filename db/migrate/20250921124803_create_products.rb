@@ -13,6 +13,8 @@ class CreateProducts < ActiveRecord::Migration[8.0]
       t.boolean :is_new, default: false
       t.integer :views_count, default: 0
       t.references :subcategory, null: false, foreign_key: true
+      t.decimal :tax_rate, precision: 5, scale: 2, default: 0.0, null: false
+      t.datetime :deleted_at
 
       t.timestamps
     end

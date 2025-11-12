@@ -8,6 +8,8 @@ class OrderSerializer < ActiveModel::Serializer
   belongs_to :billing_address, serializer: AddressSerializer
   has_many :order_items, serializer: OrderItemSerializer
   has_many :order_statuses, serializer: OrderStatusSerializer
+  belongs_to :delivery_agent, serializer: DeliveryAgentSerializer
+  has_many :order_locations, serializer: OrderLocationSerializer
 
   def formatted_order_number
     "##{object.order_number}"

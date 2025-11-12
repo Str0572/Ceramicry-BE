@@ -1,7 +1,9 @@
+require 'ostruct'
 module Api
   class OrdersController < ApplicationController
     before_action :authenticate_request
     before_action :set_order, only: [:show, :cancel, :track, :add_notes, :request_return]
+    skip_before_action :verify_authenticity_token
     
     def index
       @orders = current_user.orders.includes(:shipping_address, :billing_address, :order_items, :order_statuses)
@@ -41,15 +43,15 @@ module Api
         return render json: { errors: ["Shipping and billing addresses are required"] }, status: :unprocessable_entity
       end
 
-      checkout_service = CheckoutService.new(checkout_params.merge(account_id: current_user.id, offer_code: params[:offer_code]))
-      
-      if checkout_service.call
-        render json: {
-          data: OrderSerializer.new(checkout_service.order).serializable_hash,
-          message: 'Order placed successfully'
-        }, status: :created
+      payment_method = params[:payment_method]
+
+      case payment_method
+      when 'cash_on_delivery'
+        handle_cod_checkout
+      when 'online_payment'
+        handle_cashfree_checkout
       else
-        render json: { errors: checkout_service.errors.full_messages }, status: :unprocessable_entity
+        render json: { errors: ["Invalid payment method"] }, status: :unprocessable_entity
       end
     end
 
@@ -176,7 +178,118 @@ module Api
       }, status: :ok
     end
 
+    def cashfree_return
+      order_number = params[:order_id] || params[:orderNumber]
+      token = params[:token]
+
+      decoded_payload = JwtToken.decode(token).symbolize_keys
+      decoded_payload[:account_id] ||= decoded_payload.delete(:user_id)
+
+      service = CashfreeService.new
+      verified = service.verify_payment(order_number)
+      order_status = verified["order_status"].to_s.downcase
+      
+      unless order_status == "paid" || order_status == "success"
+        return redirect_to (ENV['FRONTEND_FAILURE_URL'] || 'https://ceramicry.netlify.app/payment-failed')
+      end
+
+      checkout_service = CheckoutService.new(
+        account_id: decoded_payload[:account_id],
+        shipping_address_id: decoded_payload[:shipping_address_id],
+        billing_address_id: decoded_payload[:billing_address_id],
+        notes: decoded_payload[:notes],
+        offer_code: decoded_payload[:offer_code],
+        payment_method: decoded_payload[:payment_method] || 'online_payment'
+      )
+
+      if checkout_service.call
+        created_order = checkout_service.order
+        created_order.update!(
+          payment_status: 'paid',
+          order_number: order_number
+        )
+        created_order.update_status!('confirmed', notes: 'Payment received via Cashfree.') if created_order.status == 'pending'
+
+        render json: {
+          success: true,
+          order_id: created_order.id,
+          order_number: created_order.order_number,
+          message: 'Order created successfully'
+        }, status: :ok
+
+      else
+        render json: { success: false, error: "Checkout failed" }, status: :unprocessable_entity
+      end
+
+    rescue => e
+      render json: { success: false, error: e.message }, status: :internal_server_error
+    end
+
     private
+
+    def handle_cod_checkout
+      checkout_service = CheckoutService.new(checkout_params.merge(account_id: current_user.id))
+      
+      if checkout_service.call
+        render json: {
+          data: OrderSerializer.new(checkout_service.order).serializable_hash,
+          message: 'Order placed successfully'
+        }, status: :created
+      else
+        render json: { errors: checkout_service.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
+    def handle_cashfree_checkout
+      total_amount = params[:amount].presence ||
+                 params.dig(:review_data, :total_amount)
+      total_amount = total_amount.to_f
+
+      if total_amount <= 0
+        return render json: { errors: ['Invalid amount'] }, status: :unprocessable_entity
+      end
+      temp_order_number = Order.generate_order_number
+      payload = {
+        account_id: current_user.id,
+        shipping_address_id: params[:shipping_address_id],
+        billing_address_id: params[:billing_address_id],
+        notes: params[:notes],
+        offer_code: params[:offer_code],
+        payment_method: 'online_payment',
+        expected_total_amount: total_amount,
+        temp_order_number: temp_order_number
+      }
+      
+      token = JwtToken.encode(payload)
+      service = CashfreeService.new
+      return_url = (ENV['FRONTEND_SUCCESS_URL'] || 'https://ceramicry.netlify.app') + "/payment-success?order_id=#{temp_order_number}&token=#{CGI.escape(token)}"
+
+      pseudo_order = OpenStruct.new(
+        total_amount: total_amount,
+        order_number: temp_order_number,
+        account: current_user,
+        account_id: current_user.id
+      )
+      data = service.create_order(order: pseudo_order, return_url: return_url)
+      render json: {
+        data: {
+          order_id: data['order_id'],
+          payment_session_id: data['payment_session_id'],
+          payment_link: data['payment_link'],
+          order_number: temp_order_number,
+          token: token,
+          redirect_url: "https://ceramicry.netlify.app/payment-success?order_id=#{data['order_id']}&token=#{token}"
+        },
+        message: 'Cashfree session created successfully'
+      }, status: :ok
+    rescue CashfreeService::Error => e
+      render json: { errors: [e.message] }, status: :unprocessable_entity
+    end
+
+    def cashfree_return_url
+      host = ENV['BACKEND_BASE_URL'] || request.base_url
+      host + '/api/payments/cashfree_return'
+    end
 
     def set_order
       @order = current_user.orders.find(params[:id])

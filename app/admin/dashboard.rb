@@ -140,7 +140,7 @@ ActiveAdmin.register_page "Dashboard" do
       column do
         panel "Sales by Category" do
           category_stats = Category.joins(subcategories: { products: { order_items: :order } })
-                                  .where(orders: { status: [:delivered, :shipped] })
+                                  .where(orders: { status: [:confirmed, :delivered, :shipped] })
                                   .group('categories.name')
                                   .select('categories.name, SUM(order_items.quantity) as total_sold, SUM(order_items.total_price) as revenue')
                                   .order('revenue DESC')

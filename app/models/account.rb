@@ -10,9 +10,6 @@ class Account < ApplicationRecord
   has_many :offers, through: :offer_usages
   has_many :order_statuses, dependent: :destroy
 
-  enum :account_type, { customer: 0, delivery_partner: 1}
-  
-  validates :account_type, inclusion: { in: %w[customer delivery_partner] }
   validates :full_name, presence: true
   validates :full_name, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }
   validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }

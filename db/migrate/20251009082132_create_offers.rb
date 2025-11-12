@@ -8,6 +8,7 @@ class CreateOffers < ActiveRecord::Migration[8.0]
       t.boolean :active, default: true
       t.datetime :expires_at
       t.integer :usage_limit, default: 0
+      t.string :discount_type, default: 'percentage', null: false
 
       t.timestamps
     end

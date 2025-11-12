@@ -5,6 +5,9 @@ class Order < ApplicationRecord
   has_many :order_items, dependent: :destroy
   has_many :order_statuses, dependent: :destroy
   has_many :products, through: :order_items
+  belongs_to :delivery_agent, optional: true
+  has_many :order_locations, dependent: :destroy
+  has_one_attached :proof_of_delivery
 
   # Order statuses
   enum :status, {
@@ -42,7 +45,7 @@ class Order < ApplicationRecord
   validates :payment_status, inclusion: { in: payment_statuses.keys }
   validates :payment_method, inclusion: { in: payment_methods.keys }, allow_nil: true
 
-  before_validation :generate_order_number, on: :create
+  before_validation :assign_order_number, on: :create
   before_validation :calculate_totals
   after_create :create_initial_status
 
@@ -130,13 +133,13 @@ class Order < ApplicationRecord
 
   private
 
-  def generate_order_number
+  def assign_order_number
     self.order_number ||= self.class.generate_order_number
   end
 
   def calculate_totals
-    self.subtotal = order_items.sum(:total_price)
-    self.total_amount = subtotal + tax_amount + shipping_amount - discount_amount
+    self.subtotal ||= order_items.sum(:total_price)
+    self.total_amount = subtotal.to_f + tax_amount.to_f + shipping_amount.to_f - discount_amount.to_f
   end
 
   def create_initial_status

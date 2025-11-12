@@ -9,6 +9,7 @@ class CreateVariants < ActiveRecord::Migration[8.0]
       t.decimal :original_price, precision: 10, scale: 2
       t.integer :discount_percentage, default: 0
       t.integer :stock_quantity, default: 0, null: false
+      t.datetime :deleted_at
 
       t.timestamps
     end

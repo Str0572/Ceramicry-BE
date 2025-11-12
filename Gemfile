@@ -56,3 +56,6 @@ gem 'kaminari'
 gem 'activeadmin_addons'
 gem "chartkick"
 gem 'groupdate'
+gem 'roo'
+gem 'roo-xls'
+gem 'httparty'

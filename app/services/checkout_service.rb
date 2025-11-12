@@ -49,7 +49,7 @@ class CheckoutService
     if @offer && @offer.valid_for_account_and_subtotal?(@account, cart_subtotal)
       initial_discount = calculate_discount_amount
     end
-
+    
     @order = Order.create!(
       account: @account,
       shipping_address: @shipping_address,

@@ -49,5 +49,22 @@ Rails.application.routes.draw do
     end
     resources :subscribes, only: [:create]
 
+    # Payments
+    post 'payments/cashfree_return', to: 'orders#cashfree_return'
+    post 'payments/cashfree_webhook', to: 'payments#cashfree_webhook'
+    resources :payments, only: [] do
+      get 'verify_payment/:id', to: 'payments#verify_payment', on: :collection
+    end
+
+    namespace :agents do
+      post 'login', to: 'sessions#login'
+      resources :orders, only: [:index, :show] do
+        member do
+          post :update_status
+          post :add_location
+          post :upload_proof
+        end
+      end
+    end
   end
 end

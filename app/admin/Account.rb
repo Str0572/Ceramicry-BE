@@ -1,6 +1,6 @@
 ActiveAdmin.register Account do
 
-  actions :index, :show
+  actions :index, :show, :destroy
   
   index do
     selectable_column
@@ -9,7 +9,6 @@ ActiveAdmin.register Account do
     column :email
     column :mobile
     column :status
-    column :account_type
     actions
   end
   
@@ -17,7 +16,6 @@ ActiveAdmin.register Account do
   filter :email
   filter :mobile
   filter :status
-  filter :account_type
 
   show do
     attributes_table do
@@ -25,7 +23,6 @@ ActiveAdmin.register Account do
       row :email
       row :mobile
       row :status
-      row :account_type
     end
   end
 end

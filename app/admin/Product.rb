@@ -86,4 +86,31 @@ ActiveAdmin.register Product do
       Product.find_by!(slug: params[:id])
     end
   end
+  action_item :import, only: :index do
+    link_to 'Import CSV/XLSX', import_admin_products_path
+  end
+
+  collection_action :import, method: :get do
+    render inline: <<-ERB
+      <h3>Import Products</h3>
+      <p>Columns: name, slug, sku, subcategory_slug, material, pieces_count, brand, is_featured, is_new, tax_rate</p>
+      <%= form_with url: do_import_admin_products_path, multipart: true, method: :post do |f| %>
+        <%= f.file_field :file, required: true %>
+        <%= f.submit 'Upload' %>
+      <% end %>
+    ERB
+  end
+
+  collection_action :do_import, method: :post do
+    if params[:file].blank?
+      redirect_to admin_products_path, alert: 'Please attach a file.' and return
+    end
+    result = Importers::ProductImporter.new(params[:file]).call
+    notice = "Imported: #{result.results[:created]} created, #{result.results[:updated]} updated"
+    if result.errors.any?
+      redirect_to admin_products_path, alert: (notice + ". Errors: #{result.errors.first(5).join('; ')}")
+    else
+      redirect_to admin_products_path, notice: notice
+    end
+  end
 end

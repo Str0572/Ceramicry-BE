@@ -9,6 +9,8 @@ class CreateOrderItems < ActiveRecord::Migration[8.0]
       t.decimal :total_price, precision: 10, scale: 2, null: false
       t.string :product_name
       t.string :variant_details
+      t.decimal :tax_amount, precision: 10, scale: 2, default: 0.0, null: false
+      t.decimal :tax_rate, precision: 5, scale: 2, default: 0.0, null: false
 
       t.timestamps
     end
