@@ -27,7 +27,7 @@ ActiveAdmin.register Variant do
   filter :sku
   filter :size
   filter :stock_quantity
-  # filter :product_id, as: :select, collection: Product.all.pluck(:name, :id)
+  filter :product_id, as: :select, collection: -> { Product.all.pluck(:name, :id) }
 
   form do |f|
     f.inputs do
@@ -43,6 +43,8 @@ ActiveAdmin.register Variant do
         f.object.product_images.each do |img|
           span do
             image_tag url_for(img), size: "100x100"
+            link_to "Remove", remove_image_admin_variant_path(image_id: img.id, id: f.object.id),
+              method: :delete, data: { confirm: "Remove this image?" }
           end
         end
       end
@@ -98,5 +100,11 @@ ActiveAdmin.register Variant do
     else
       redirect_to admin_variants_path, notice: notice
     end
+  end
+
+  member_action :remove_image, method: :delete do
+    image = ActiveStorage::Attachment.find(params[:image_id])
+    image.purge
+    redirect_to edit_admin_variant_path(params[:id]), notice: "Image removed"
   end
 end

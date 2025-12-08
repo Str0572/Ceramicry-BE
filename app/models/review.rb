@@ -11,14 +11,12 @@ class Review < ApplicationRecord
   before_save :check_for_spam
 
   def check_for_spam
-    # Add more robust profanity/spam check here in future
     if comment&.downcase&.include?("spam")
       errors.add(:comment, "contains inappropriate content")
       throw(:abort)
     end
   end
 
-  # Admin only: hide/restore
   def hide!
     update(hidden: true)
   end

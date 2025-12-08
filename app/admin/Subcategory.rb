@@ -1,5 +1,5 @@
 ActiveAdmin.register Subcategory do
-  permit_params :name, :slug, :description, :category_id
+  permit_params :name, :slug, :description, :category_id, :img_icon
 
   config.batch_actions = true
 
@@ -21,6 +21,11 @@ ActiveAdmin.register Subcategory do
     f.inputs do
       f.input :name
       f.input :description
+      f.input :img_icon, as: :file, hint: (
+        f.object.img_icon.attached? ?
+          image_tag(url_for(f.object.img_icon), size: "100x100") :
+          content_tag(:span, "No icon uploaded yet")
+      )
       f.input :category_id, as: :select, collection: Category.all.pluck(:name, :id)
     end
     f.actions
@@ -33,6 +38,13 @@ ActiveAdmin.register Subcategory do
       row :description
       row "Category" do |subcategory|
         subcategory&.category&.name if subcategory.category
+      end
+      row :img_icon do |subcategory|
+        if subcategory.img_icon.attached?
+          image_tag url_for(subcategory.img_icon), size: "120x120"
+        else
+          status_tag "No Image"
+        end
       end
     end
   end

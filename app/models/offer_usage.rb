@@ -9,6 +9,6 @@ class OfferUsage < ApplicationRecord
   private
 
   def set_used_at
-    self.used_at ||= Time.current
+    self.used_at = Time.current
   end
 end

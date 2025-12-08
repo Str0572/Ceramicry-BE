@@ -1,0 +1,9 @@
+<h2 style="color: #3b82f6;">Order <%= @order.order_number %> Update</h2>
+<p>Hello <%= @user.full_name || @user.email %>,</p>
+<p>Your order status is now: <strong><%= @status.humanize %></strong>.</p>
+<ul>
+  <li>Order Placed: <%= @order.created_at.strftime('%d %b %Y, %I:%M %p') %></li>
+  <li>Current Status: <strong><%= @status.humanize %></strong></li>
+</ul>
+<p>You can follow your order status in your account any time.</p>
+<p style="margin-top:24px;">Thank you for shopping with us!<br>Team Ceramicry</p>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_31_071109) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_27_154448) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -297,6 +297,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_071109) do
     t.index ["product_id"], name: "index_reviews_on_product_id"
   end
 
+  create_table "shiprocket_shipments", force: :cascade do |t|
+    t.bigint "order_id", null: false
+    t.bigint "sr_order_id"
+    t.bigint "sr_shipment_id"
+    t.string "awb_code"
+    t.integer "courier_company_id"
+    t.string "courier_name"
+    t.string "status"
+    t.string "last_shiprocket_status"
+    t.datetime "last_synced_at"
+    t.jsonb "raw_order_response"
+    t.jsonb "raw_courier_response"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["awb_code"], name: "index_shiprocket_shipments_on_awb_code"
+    t.index ["order_id"], name: "index_shiprocket_shipments_on_order_id"
+    t.index ["sr_order_id"], name: "index_shiprocket_shipments_on_sr_order_id"
+  end
+
   create_table "subcategories", force: :cascade do |t|
     t.string "name", null: false
     t.string "slug", null: false
@@ -326,6 +345,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_071109) do
     t.datetime "deleted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "length"
+    t.decimal "breadth"
+    t.decimal "height"
+    t.decimal "weight"
     t.index ["product_id"], name: "index_variants_on_product_id"
     t.index ["sku"], name: "index_variants_on_sku", unique: true
   end
@@ -356,6 +379,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_071109) do
   add_foreign_key "products", "subcategories"
   add_foreign_key "reviews", "accounts"
   add_foreign_key "reviews", "products"
+  add_foreign_key "shiprocket_shipments", "orders"
   add_foreign_key "subcategories", "categories"
   add_foreign_key "variants", "products"
 end

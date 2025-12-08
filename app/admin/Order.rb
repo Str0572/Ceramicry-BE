@@ -104,9 +104,9 @@ ActiveAdmin.register Order do
       f.input :account, as: :select, collection: Account.all.map { |a| [a.full_name, a.id] }
       f.input :shipping_address, as: :select, collection: Address.all.map { |a| [a.full_address, a.id] }
       f.input :billing_address, as: :select, collection: Address.all.map { |a| [a.full_address, a.id] }
-      f.input :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
+      f.input :status, input_html: { disabled: true }
       f.input :payment_status, as: :select, collection: Order.payment_statuses.keys.map { |s| [s.humanize, s] }
-      f.input :payment_method, as: :select, collection: Order.payment_methods.keys.map { |m| [m.humanize, m] }
+      f.input :payment_method, input_html: { disabled: true }
       f.input :notes, as: :text
       f.input :delivery_agent, as: :select, collection: DeliveryAgent.all.map { |a| [a.full_name, a.id] }, include_blank: true
       f.input :shipped_at, as: :datetime_picker
@@ -117,7 +117,6 @@ ActiveAdmin.register Order do
   end
 
   filter :order_number
-  # Enhanced account filter; use simple select to avoid extra endpoints
   filter :account, as: :select, collection: -> { Account.all.map { |a| [a.full_name, a.id] } }
   # filter :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
   # filter :payment_status, as: :select, collection: Order.payment_statuses.keys.map { |s| [s.humanize, s] }
@@ -125,62 +124,29 @@ ActiveAdmin.register Order do
   filter :total_amount
 
   scope :all, default: true
-  scope :pending, -> { where(status: 'pending') }
-  scope :confirmed, -> { where(status: 'confirmed') }
-  scope :processing, -> { where(status: 'processing') }
-  scope :shipped, -> { where(status: 'shipped') }
-  scope :out_for_delivery, -> {where(status: 'out_for_delivery')}
-  scope :delivered, -> { where(status: 'delivered') }
-  scope :cancelled, -> { where(status: 'cancelled') }
-  scope :returned, -> { where(status: 'returned') }
-  scope :refunded, -> { where(status: 'refunded') }
+  Order.statuses.keys.each do |s|
+    scope s, -> { where(status: s) }
+  end
 
-  action_item :approve, only: :show, if: proc { resource.status == 'pending' } do
-    link_to 'Approve Order', approve_admin_order_path(resource), method: :post
+  action_item :approve, only: :show, if: -> { resource.status == "pending" } do
+    link_to "Approve Order", approve_admin_order_path(resource), method: :post
   end
 
   member_action :approve, method: :post do
-    resource.update_status!('confirmed', notes: 'Approved by admin')
-    redirect_to resource_path, notice: 'Order approved.'
+    resource.update_status!("confirmed", notes: "Order Confirmed Successfully")
+    redirect_to resource_path, notice: "Order confirmed."
+  end
+
+  action_item :create_shipment, only: :show, if: -> { resource.status == "confirmed" && resource.shiprocket_shipment.nil? } do
+    link_to "Create Shiprocket Shipment", create_shipment_admin_order_path(resource), method: :post
+  end
+
+  member_action :create_shipment, method: :post do
+    CreateShiprocketShipmentJob.perform_later(resource.id)
+    redirect_to resource_path, notice: "Shiprocket shipment creation started. It will update soon."
   end
 
   action_item :assign_agent, only: :show do
     link_to 'Assign Delivery Agent', edit_admin_order_path(resource)
-  end
-
-  action_item :mark_processing, only: :show, if: proc { resource.status == 'confirmed' } do
-    link_to 'Mark Processing', mark_processing_admin_order_path(resource), method: :post
-  end
-
-  member_action :mark_processing, method: :post do
-    resource.update_status!('processing', notes: 'Processing started by admin')
-    redirect_to resource_path, notice: 'Order marked as processing.'
-  end
-
-  action_item :mark_shipped, only: :show, if: proc { resource.status == 'processing' } do
-    link_to 'Mark Shipped', mark_shipped_admin_order_path(resource), method: :post
-  end
-
-  member_action :mark_shipped, method: :post do
-    resource.update_status!('shipped', notes: 'Shipped by admin')
-    redirect_to resource_path, notice: 'Order marked as shipped.'
-  end
-
-  action_item :mark_out_for_delivery, only: :show, if: proc { resource.status == 'shipped' } do
-    link_to 'Out for Delivery', mark_out_for_delivery_admin_order_path(resource), method: :post
-  end
-
-  member_action :mark_out_for_delivery, method: :post do
-    resource.update_status!('out_for_delivery', notes: 'Out for delivery')
-    redirect_to resource_path, notice: 'Order marked as out for delivery.'
-  end
-
-  action_item :mark_delivered, only: :show, if: proc { %w[out_for_delivery shipped].include?(resource.status) } do
-    link_to 'Mark Delivered', mark_delivered_admin_order_path(resource), method: :post
-  end
-
-  member_action :mark_delivered, method: :post do
-    resource.update_status!('delivered', notes: 'Delivered')
-    redirect_to resource_path, notice: 'Order marked as delivered.'
   end
 end

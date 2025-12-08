@@ -47,16 +47,12 @@ ActiveAdmin.register OrderStatus do
   end
 
   filter :order, as: :select, collection: -> { Order.all.map { |o| [o.order_number, o.id] } }
-  # filter :status, as: :select, collection: Order.statuses.keys.map { |s| [s.humanize, s] }
+  filter :status, as: :select, collection: -> { Order.statuses.keys.map { |s| [s.humanize, s] } }
   filter :created_by, as: :select, collection: -> { Account.all.map { |a| [a.full_name, a.id] } }
   filter :created_at
 
   scope :all, default: true
-  scope :pending, -> { where(status: 'pending') }
-  scope :confirmed, -> { where(status: 'confirmed') }
-  scope :processing, -> { where(status: 'processing') }
-  scope :shipped, -> { where(status: 'shipped') }
-  scope :delivered, -> { where(status: 'delivered') }
-  scope :cancelled, -> { where(status: 'cancelled') }
-  scope :refunded, -> { where(status: 'refunded') }
+  Order.statuses.keys.each do |s|
+    scope s, -> { where(status: s) }
+  end
 end

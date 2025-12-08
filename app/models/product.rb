@@ -49,7 +49,6 @@ class Product < ApplicationRecord
     !!deleted_at
   end
 
-  # Sellability logic for frontend/back
   def sellable?
     !deleted? && variants.active.any? { |v| v.sellable? }
   end

@@ -12,15 +12,16 @@ Rails.application.routes.draw do
     post 'login', to: 'auth#login'
     post 'forgot_password', to: 'accounts#forgot_password'
     post 'otp_confirmation', to: 'accounts#otp_confirmation'
-    post 'reset_password', to: 'accounts#reset_user_password'
+    post 'reset_user_password', to: 'accounts#reset_user_password'
     post 'change_password', to: 'accounts#change_password'
-    resources :accounts, only: [:index, :show, :update] do
+    resources :accounts do
       resources :addresses, only: [:index, :show, :create, :update, :destroy]
     end
     resources :offers, only: [:index], param: :code do
       post :apply, on: :member
     end
     resources :products do
+      get :similar_product, on: :collection
       resources :variants
       resources :reviews, only: [:index, :create]
     end
@@ -55,6 +56,7 @@ Rails.application.routes.draw do
     resources :payments, only: [] do
       get 'verify_payment/:id', to: 'payments#verify_payment', on: :collection
     end
+    post 'shiprocket/webhook', to: 'shiprocket_webhooks#receive'
 
     namespace :agents do
       post 'login', to: 'sessions#login'
@@ -67,4 +69,5 @@ Rails.application.routes.draw do
       end
     end
   end
+  
 end

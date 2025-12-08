@@ -7,6 +7,8 @@ class Order < ApplicationRecord
   has_many :products, through: :order_items
   belongs_to :delivery_agent, optional: true
   has_many :order_locations, dependent: :destroy
+  has_one :shiprocket_shipment, dependent: :destroy
+  has_one :delhivery_shipment, dependent: :destroy
   has_one_attached :proof_of_delivery
 
   # Order statuses
@@ -45,14 +47,14 @@ class Order < ApplicationRecord
   validates :payment_status, inclusion: { in: payment_statuses.keys }
   validates :payment_method, inclusion: { in: payment_methods.keys }, allow_nil: true
 
-  before_validation :assign_order_number, on: :create
+  before_validation :assign_order_number, on: :create, unless: -> { order_number.present? }
   before_validation :calculate_totals
   after_create :create_initial_status
+  before_save :set_default_estimated_delivery
 
   scope :recent, -> { order(created_at: :desc) }
   scope :by_status, ->(status) { where(status: status) }
   scope :by_payment_status, ->(payment_status) { where(payment_status: payment_status) }
-  after_update :track_status_change, if: :saved_change_to_status?
 
   def self.generate_order_number
     "ORD#{Time.current.strftime('%Y%m%d')}#{SecureRandom.alphanumeric(4).upcase}"
@@ -78,12 +80,6 @@ class Order < ApplicationRecord
     delivered_at.present? && delivered_at >= 7.days.ago && status == 'delivered'
   end
 
-  before_save :set_default_estimated_delivery
-
-  def set_default_estimated_delivery
-    self.estimated_delivery ||= 5.days.from_now.in_time_zone('Asia/Kolkata')
-  end
-
   def update_status!(new_status, notes: nil, created_by: nil)
     return false unless valid_status_transition?(new_status)
 
@@ -95,7 +91,6 @@ class Order < ApplicationRecord
         created_by: created_by || account
       )
       
-      # Update timestamps for specific statuses
       case new_status
       when 'shipped'
         update!(shipped_at: Time.current)
@@ -105,6 +100,7 @@ class Order < ApplicationRecord
         update!(cancelled_at: Time.current)
       end
     end
+    NotificationMailer.order_status_updated(account, self, new_status).deliver_now
   end
 
   def add_status_notes(notes, created_by: nil)
@@ -131,6 +127,47 @@ class Order < ApplicationRecord
     billing_address&.full_address
   end
 
+  def estimated_delivery_date
+    estimated_delivery&.strftime("%d %b %Y")
+  end
+
+  def push_to_shiprocket!(created_by: nil)
+    raise 'Order already has Shiprocket shipment' if shiprocket_shipment.present?
+
+    service = ShiprocketService.new
+    order_data, _raw_data = service.create_order_for(self)
+
+    sr_order_id    = order_data['order_id'] || order_data['orderid']
+    sr_shipment_id = order_data['shipment_id'] || order_data.dig('shipments', 0, 'id')
+
+    courier_response    = service.assign_courier(sr_shipment_id)
+    data = courier_response.dig('response', 'data') || {}
+
+    awb_code           = data['awb_code']
+    courier_company_id = data['courier_id']
+    courier_name       = data['courier_name'] || "Mock Courier"
+    last_status        = courier_response['status'].to_s.presence || "mock"
+
+    raise "Shiprocket did not return AWB code" if awb_code.blank?
+
+    create_shiprocket_shipment!(
+      sr_order_id:          sr_order_id,
+      sr_shipment_id:       sr_shipment_id,
+      awb_code:             awb_code,
+      courier_company_id:   courier_company_id,
+      courier_name:         courier_name,
+      status:               'created',
+      last_shiprocket_status: last_status,
+      last_synced_at:       Time.current,
+      raw_order_response:   order_data,
+      raw_courier_response: courier_response
+    )
+
+    update_status!('processing', notes: "Shiprocket shipment created. AWB #{awb_code}", created_by: created_by) if awb_code.present?
+
+    self
+  end
+
   private
 
   def assign_order_number
@@ -150,25 +187,23 @@ class Order < ApplicationRecord
     )
   end
 
+  def set_default_estimated_delivery
+    self.estimated_delivery ||= 5.days.from_now.in_time_zone('Asia/Kolkata')
+  end
+
   def valid_status_transition?(new_status)
     valid_transitions = {
       'pending' => %w[confirmed cancelled],
       'confirmed' => %w[processing cancelled],
       'processing' => %w[shipped cancelled],
-      'shipped' => %w[delivered out_for_delivery],
+      'shipped' => %w[out_for_delivery delivered],
+      'out_for_delivery' => %w[delivered],
       'delivered' => %w[returned refunded],
+      'returned' => %w[refunded],
       'cancelled' => [],
       'refunded' => []
     }
     
-    valid_transitions[status]&.include?(new_status) || false
-  end
-
-  def track_status_change
-    order_statuses.create!(
-      status: status,
-      notes: "Status changed to #{status.humanize} via admin.",
-      created_by: account
-    )
+    valid_transitions[status]&.include?(new_status)
   end
 end

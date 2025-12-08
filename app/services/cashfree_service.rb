@@ -1,5 +1,6 @@
 require 'httparty'
 require 'openssl'
+require 'base64'
 
 class CashfreeService
   include HTTParty
@@ -10,7 +11,8 @@ class CashfreeService
     @app_id = ENV['CASHFREE_APP_ID']
     @secret_key = ENV['CASHFREE_SECRET_KEY']
     env = (ENV['CASHFREE_ENV'] || 'sandbox').to_s.downcase
-    @base = ENV['CASHFREE_BASE'].presence || (env == 'production' ? 'https://sandbox.cashfree.com/pg' : 'https://sandbox.cashfree.com/pg')
+    @base = ENV['CASHFREE_BASE'].presence
+    # @base = ENV['CASHFREE_BASE'].presence || (env == 'production' ? 'https://api.cashfree.com/pg' : 'https://sandbox.cashfree.com/pg')
 
     self.class.base_uri @base
     raise Error, "Cashfree credentials missing for env=#{env}" if @app_id.blank? || @secret_key.blank?
@@ -34,17 +36,12 @@ class CashfreeService
       }
     }
 
-    headers = {
-      "Content-Type" => "application/json",
-      "x-client-id" => @app_id,
-      "x-client-secret" => @secret_key,
-      "x-api-version" => "2022-09-01"
-    }
+    headers = default_headers
 
     response = self.class.post("/orders", body: payload.to_json, headers: headers, timeout: 20)
     data = response.parsed_response
     unless response.success?
-      raise Error, data['message'] || "Cashfree order creation failed"
+      raise Error, "#{data['message']} (code: #{data['code']})" if data['code']
     end
 
     unless data['payment_session_id'].present?
@@ -55,12 +52,7 @@ class CashfreeService
   end
 
   def verify_payment(order_number)
-    headers = {
-      "Content-Type" => "application/json",
-      "x-client-id" => @app_id,
-      "x-client-secret" => @secret_key,
-      "x-api-version" => "2022-09-01"
-    }
+    headers = default_headers
 
     response = self.class.get("/orders/#{order_number}", headers: headers, timeout: 20)
     data = response.parsed_response
@@ -69,11 +61,21 @@ class CashfreeService
 
   def verify_signature(signature:, payload:)
     return false if signature.blank? || payload.blank?
-    digest = OpenSSL::HMAC.hexdigest('sha256', @secret_key.to_s, payload.to_s)
-    secure_compare(digest, signature.to_s)
+    digest = OpenSSL::HMAC.digest("sha256", @secret_key, payload)
+    base64_signature = Base64.strict_encode64(digest)
+    secure_compare(base64_signature, signature)
   end
 
   private
+
+  def default_headers
+    {
+      "Content-Type"      => "application/json",
+      "x-client-id"       => @app_id,
+      "x-client-secret"   => @secret_key,
+      "x-api-version"     => "2022-09-01"
+    }
+  end
 
   def secure_compare(a, b)
     return false if a.blank? || b.blank? || a.bytesize != b.bytesize

@@ -87,7 +87,7 @@ module Api
     def track
       milestones = OrderStatus::MILESTONES.map do |m|
         status_record = @order.order_statuses.where(status: m[:key]).order(:created_at).first
-        {
+        { 
           key: m[:key],
           name: m[:name],
           explanation: m[:explanation],
@@ -97,13 +97,22 @@ module Api
           notes: status_record&.notes
         }
       end
+
+      sr = @order.shiprocket_shipment
       render json: {
         data: {
           order: OrderSerializer.new(@order).serializable_hash.merge({
             milestones: milestones,
             can_cancel: @order.can_be_cancelled?,
             can_return: @order.can_be_returned?,
-            estimated_delivery: @order.estimated_delivery
+            estimated_delivery: @order.estimated_delivery,
+            shiprocket: sr.present? ? {
+              awb_code: sr.awb_code,
+              courier_name: sr.courier_name,
+              tracking_url: sr.tracking_url,
+              last_status: sr.last_shiprocket_status,
+              last_synced_at: sr.last_synced_at
+            } : nil
           })
         },
         message: 'Order tracking information fetched successfully'
@@ -159,12 +168,19 @@ module Api
         CartItemSerializer.new(item).as_json
       end
       
+      subtotal = temp_checkout.send(:cart_subtotal)
       tax_amount = temp_checkout.send(:calculate_tax)
       shipping_amount = temp_checkout.send(:calculate_shipping)
-      discount_amount = temp_checkout.send(:calculate_discount_amount)
-      subtotal = temp_checkout.send(:cart_subtotal)
+
+      discount_amount = 0
+      if params[:offer_code].present?
+        offer = Offer.find_by(code: params[:offer_code].to_s.upcase)
+        if offer&.valid_for?(current_user, subtotal)
+          discount_amount = offer.apply_discount(subtotal)
+        end
+      end
+
       total_amount = subtotal + tax_amount + shipping_amount - discount_amount
-      
       render json: {
         data: {
           items: items,
@@ -189,7 +205,7 @@ module Api
       verified = service.verify_payment(order_number)
       order_status = verified["order_status"].to_s.downcase
       
-      unless order_status == "paid" || order_status == "success"
+      unless %w[paid success].include?(order_status)
         return redirect_to (ENV['FRONTEND_FAILURE_URL'] || 'https://ceramicry.netlify.app/payment-failed')
       end
 
@@ -199,21 +215,19 @@ module Api
         billing_address_id: decoded_payload[:billing_address_id],
         notes: decoded_payload[:notes],
         offer_code: decoded_payload[:offer_code],
-        payment_method: decoded_payload[:payment_method] || 'online_payment'
+        payment_method: decoded_payload[:payment_method] || 'online_payment',
+        order_number: order_number
       )
 
       if checkout_service.call
         created_order = checkout_service.order
-        created_order.update!(
-          payment_status: 'paid',
-          order_number: order_number
-        )
-        created_order.update_status!('confirmed', notes: 'Payment received via Cashfree.') if created_order.status == 'pending'
+        created_order.update!(payment_status: 'paid')
 
         render json: {
           success: true,
           order_id: created_order.id,
           order_number: created_order.order_number,
+          total_amount: created_order.total_amount,
           message: 'Order created successfully'
         }, status: :ok
 
@@ -241,8 +255,7 @@ module Api
     end
 
     def handle_cashfree_checkout
-      total_amount = params[:amount].presence ||
-                 params.dig(:review_data, :total_amount)
+      total_amount = params[:amount].presence || params.dig(:review_data, :total_amount)
       total_amount = total_amount.to_f
 
       if total_amount <= 0
@@ -278,7 +291,7 @@ module Api
           payment_link: data['payment_link'],
           order_number: temp_order_number,
           token: token,
-          redirect_url: "https://ceramicry.netlify.app/payment-success?order_id=#{data['order_id']}&token=#{token}"
+          redirect_url: "https://ceramicry.netlify.app/payment-success?order_id=#{data['order_id']}&token=#{CGI.escape(token)}"
         },
         message: 'Cashfree session created successfully'
       }, status: :ok

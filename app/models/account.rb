@@ -1,14 +1,15 @@
 class Account < ApplicationRecord
   has_secure_password
+  acts_as_paranoid
 
   has_many :addresses, dependent: :destroy
-  has_many :cart_items, dependent: :destroy
   has_one :cart, dependent: :destroy
-  has_many :orders, dependent: :destroy
+  has_many :cart_items, through: :cart
+  has_many :orders
+  has_many :order_statuses, through: :orders
   has_many :reviews, dependent: :destroy
   has_many :offer_usages, dependent: :destroy
   has_many :offers, through: :offer_usages
-  has_many :order_statuses, dependent: :destroy
 
   validates :full_name, presence: true
   validates :full_name, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }
@@ -22,9 +23,10 @@ class Account < ApplicationRecord
 
   validate :passwords_match, if: :password_required?
 
-  # after_create :send_email_confirmation
   after_create :create_default_cart
   after_update :create_default_cart
+  after_create :send_account_created_email
+  after_update :send_password_updated_email, if: :saved_change_to_password_digest?
 
   def password_required?
     new_record? || password.present? || password_confirmation.present?
@@ -37,12 +39,15 @@ class Account < ApplicationRecord
     errors.add(:password_confirmation, "doesn't match password")
   end
 
-  def send_email_confirmation
-    self.update(status: true)
-    AccountMailer.with(account: self).account_confirmation_email.deliver_now
-  end
-
   def create_default_cart
     create_cart unless cart.present?
+  end
+
+  def send_account_created_email
+    NotificationMailer.account_created(self).deliver_now
+  end
+
+  def send_password_updated_email
+    NotificationMailer.password_updated(self).deliver_now
   end
 end

@@ -10,17 +10,18 @@ module Api
 
     def apply
       total_amount = params[:total_amount].to_f
+      offer = @offer
       account = current_user
 
-      return render json: { errors: "Invalid Coupon" }, status: :not_found unless @offer
-      return render json: { errors: "Coupon expired" }, status: :unprocessable_entity if @offer.expired?
-      return render json: { errors: "Minimum order ₹#{@offer.min_order} required" }, status: :unprocessable_entity if total_amount < @offer.min_order
-      return render json: { errors: "Offer usage limit reached" }, status: :unprocessable_entity if @offer.usage_exceeded?
-      return render json: { errors: "You’ve already used this offer" }, status: :unprocessable_entity if OfferUsage.exists?(offer: @offer, account: account)
+      return render json: { errors: "Invalid Coupon" }, status: :not_found unless offer
 
-      discount = @offer.apply_discount(total_amount)
+      return render json: { errors: "Coupon expired" }, status: :unprocessable_entity if offer.expired?
+      return render json: { errors: "Coupon not active" }, status: :unprocessable_entity unless offer.active?
+      return render json: { errors: "Minimum order ₹#{offer.min_order} required" }, status: :unprocessable_entity if total_amount < offer.min_order
+      return render json: { errors: "Offer usage limit reached" }, status: :unprocessable_entity if offer.usage_exceeded?
+      return render json: { errors: "You’ve already used this offer" }, status: :unprocessable_entity if account.offer_usages.exists?(offer: offer)
 
-      OfferUsage.create!(offer: @offer, account: account, used_at: Time.current)
+      discount = offer.apply_discount(total_amount)
 
       render json: {
         message: "Offer applied successfully",

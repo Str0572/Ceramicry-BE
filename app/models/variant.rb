@@ -5,8 +5,8 @@ class Variant < ApplicationRecord
   has_many :order_items, dependent: :destroy
   validates :sku, presence: true, uniqueness: true
   validates :price, presence: true, numericality: true
+  validates :weight, numericality: { greater_than: 0 }, allow_nil: true
   validates :stock_quantity, numericality: { greater_than_or_equal_to: 0 }
-  scope :available, -> { where(is_available: true).where("stock_quantity > 0") }
   scope :active, -> { where(deleted_at: nil) }
 
   validate :validate_image_type

@@ -12,5 +12,4 @@ class CartItem < ApplicationRecord
     base_price = variant&.price || 0
     self.total_price = base_price * qty
   end
-
 end

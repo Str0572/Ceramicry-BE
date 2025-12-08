@@ -1,5 +1,6 @@
 class Category < ApplicationRecord
   has_many :subcategories, dependent: :destroy
+  has_many :products, through: :subcategories
   has_one_attached :cat_icon
 
   validates :name, presence: true, uniqueness: true

@@ -1,7 +1,7 @@
 module Api
   class AccountsController < ApplicationController
     skip_before_action :authenticate_request, only: [:signup, :forgot_password, :otp_confirmation, :reset_user_password]
-    before_action :find_user, only: [:show, :update, :reset_user_password]
+    before_action :find_user, only: [:show, :update, :destroy]
     before_action :authorize_access, only: [:index]
 
     def index
@@ -48,56 +48,109 @@ module Api
       end
     end
 
-    def forgot_password
-      if params[:email].blank?
-        return render json: { errors: [{ otp: 'Email is required' }] }, status: :unprocessable_entity
+    def destroy
+      @account = Account.with_deleted.find_by(id: params[:id])
+
+      return render json: { message: "Account not found" }, status: :not_found unless @account
+
+      unless params[:password].present?
+        return render json: { message: "Password is required" }, status: :unprocessable_entity
+      end
+      
+      unless @account.authenticate(params[:password])
+        return render json: { message: "Incorrect password" }, status: :unauthorized
       end
 
-      @user = Account.find_by(email: params[:email])
-      return render json: { errors: [{ otp: 'User not found' }] }, status: :not_found unless @user
+      if @account.destroy
+        render json: { message: "Account deleted successfully" }, status: :ok
+      else
+        render json: { message: "Unable to delete account" }, status: :unprocessable_entity
+      end
+    end
 
-      if @user.update(otp_pin: rand(1000..9999), otp_sent_at: Time.current)
-        AccountMailer.with(account: @user).email_otp_send.deliver_now
+    def forgot_password
+      if params[:email].blank?
+        return render json: { errors: [ 'Email is required' ] }, status: :unprocessable_entity
+      end
+
+      user = Account.find_by(email: params[:email].to_s.downcase)
+      unless user
+        return render json: {
+          message: "If an account with this email exists, an OTP has been sent."
+        }, status: :ok
+      end
+
+      if user.otp_sent_at.present? && user.otp_sent_at > 1.minute.ago
+        return render json: {
+          errors: ["OTP already sent recently. Please wait a minute before requesting another."]
+        }, status: :too_many_requests
+      end
+
+      otp = rand(100000..999999)
+      if user.update(otp_pin: otp.to_s, otp_sent_at: Time.current, reset_password_token: nil, reset_password_sent_at: nil)
+        NotificationMailer.with(account: user).email_otp_send.deliver_now
+
         render json: {
-          data: { id: @user.id, email: @user.email, otp_pin: @user.otp_pin },
-          message: "OTP sent successfully"
+          message: "OTP sent successfully."
         }, status: :ok
       else
-        render json: { errors: @user.errors }, status: :unprocessable_entity
+        render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
       end
     end
 
     def otp_confirmation
-      if params[:otp].blank? || params[:id].blank?
-        return render json: { errors: [{ otp: 'ID and OTP code are required' }] }, status: :unprocessable_entity
+      if params[:otp].blank? || params[:email].blank?
+        return render json: { errors: ['Email and OTP are required'] }, status: :unprocessable_entity
       end
 
-      @user = Account.find_by(id: params[:id])
-      return render json: { errors: "Invalid ID" }, status: :not_found unless @user
+      user = Account.find_by(email: params[:email].to_s.downcase)
+      return render json: { errors: ['Invalid email or OTP'] }, status: :unprocessable_entity unless user
 
-      if @user.otp_pin.to_s == params[:otp].to_s
-        render json: { data: { id: @user.id, email: @user.email }, message: "OTP confirmed successfully" }, status: :ok
-      else
-        render json: { errors: "Invalid OTP." }, status: :unprocessable_entity
+      if user.otp_pin.blank? || user.otp_sent_at.blank? || user.otp_sent_at < 5.minutes.ago
+        return render json: { errors: ['OTP expired. Please request a new one.'] }, status: :unprocessable_entity
       end
+
+      unless user.otp_pin.to_s == params[:otp].to_s
+        return render json: { errors: ['Invalid OTP'] }, status: :unprocessable_entity
+      end
+
+      reset_token = SecureRandom.hex(32)
+      user.update!(
+        reset_password_token: reset_token,
+        reset_password_sent_at: Time.current,
+        otp_pin: nil,
+        otp_sent_at: nil
+      )
+
+      render json: {
+        message: 'OTP verified successfully.'
+      }, status: :ok
     end
 
     def reset_user_password
-      if params[:new_password].blank? || params[:password_confirmation].blank?
-        return render json: { errors: [{ password: 'New password and confirm password are required' }] }, status: :unprocessable_entity
+
+      if params[:email].blank? || params[:new_password].blank? || params[:password_confirmation].blank?
+        return render json: { errors: ['New password and confirm password are required'] }, status: :unprocessable_entity
       end
 
-      if @user.otp_pin.present? && @user.otp_sent_at.present?
-        if @user.update(password: params[:new_password], password_confirmation: params[:password_confirmation], otp_pin: nil, otp_sent_at: nil)
-          render json: {
-            data: AccountSerializer.new(@user).serializable_hash,
-            message: ['Password reset successfully']
-          }, status: :ok
-        else
-          render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
-        end
+      user = Account.find_by(email: params[:email].downcase)
+      return render json: { errors: ['Invalid email'] }, status: :unprocessable_entity unless user
+
+      if user.reset_password_token.blank? || user.reset_password_sent_at < 5.minutes.ago
+        return render json: { errors: ['Reset request expired. Try again.'] }, status: :unprocessable_entity
+      end
+
+      if user.update(
+        password: params[:new_password],
+        password_confirmation: params[:password_confirmation],
+        reset_password_token: nil,
+        reset_password_sent_at: nil
+      )
+        render json: {
+          message: ['Password reset successfully']
+        }, status: :ok
       else
-        render json: { errors: [{ id: 'OTP not generated or expired' }] }, status: :unprocessable_entity
+        render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
       end
     end
 

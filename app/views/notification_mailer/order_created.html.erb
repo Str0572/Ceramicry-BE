@@ -1,0 +1,13 @@
+<!-- Professional order confirmation email -->
+<h2 style="color: #3b82f6;"><%= @user.full_name || @user.email %>, Thank you for your order!</h2>
+<p>Your order <strong><%= @order.order_number %></strong> has been successfully placed.</p>
+<hr>
+<p><b>Order Details:</b></p>
+<ul>
+  <li>Total: <strong>₹<%= @order.total_amount %></strong></li>
+  <li>Status: <%= @order.status.humanize %></li>
+  <li>Placed on: <%= @order.created_at.strftime('%d %b %Y, %I:%M %p') %></li>
+</ul>
+<p>You can track your order status anytime in your account dashboard.</p>
+<p style="margin-top:24px;">Warm regards,<br>
+Team Ceramicry</p>

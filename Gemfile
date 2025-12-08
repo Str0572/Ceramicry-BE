@@ -59,3 +59,7 @@ gem 'groupdate'
 gem 'roo'
 gem 'roo-xls'
 gem 'httparty'
+gem 'whenever', require: false
+# gem 'delhivery'
+gem 'acts_as_paranoid'
+gem 'cloudinary'
