@@ -11,8 +11,8 @@ class CashfreeService
     @app_id = ENV['CASHFREE_APP_ID']
     @secret_key = ENV['CASHFREE_SECRET_KEY']
     env = (ENV['CASHFREE_ENV'] || 'sandbox').to_s.downcase
-    @base = ENV['CASHFREE_BASE'].presence
-    # @base = ENV['CASHFREE_BASE'].presence || (env == 'production' ? 'https://api.cashfree.com/pg' : 'https://sandbox.cashfree.com/pg')
+    # @base = ENV['CASHFREE_BASE'].presence
+    @base = ENV['CASHFREE_BASE'].presence || (env == 'production' ? 'https://api.cashfree.com/pg' : 'https://sandbox.cashfree.com/pg')
 
     self.class.base_uri @base
     raise Error, "Cashfree credentials missing for env=#{env}" if @app_id.blank? || @secret_key.blank?
